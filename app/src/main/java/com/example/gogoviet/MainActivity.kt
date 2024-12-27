@@ -8,7 +8,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,18 +50,26 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.gogoviet.ui.theme.*
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+
             GoGoVietTheme {
+                val navController = rememberNavController()
                 Scaffold (
-                    bottomBar = { Menu() },
+                    bottomBar = { Menu(navController) },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                        innerPadding -> Home(Modifier.padding(innerPadding))
+                    innerPadding -> NavigationHost(navController, Modifier.padding(innerPadding))
                 }
             }
         }
@@ -66,12 +77,58 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Home(modifier: Modifier = Modifier) {
-    Text(text = "Hello", modifier = modifier)
+fun NavigationHost(navController: NavHostController, modifier: Modifier = Modifier) {
+    NavHost(navController, startDestination = "home", modifier = modifier) {
+        composable("home") { HomeScreen() }
+        composable("explore") { ExploreScreen() }
+        composable("video") { VideoScreen() }
+        composable("saved") { SavedScreen() }
+        composable("account") { AccountScreen() }
+    }
 }
 
 @Composable
-fun Menu() {
+fun HomeScreen() {
+    ScreenContent("Home Screen")
+}
+
+@Composable
+fun ExploreScreen() {
+    ScreenContent("Explore Screen")
+}
+
+@Composable
+fun VideoScreen() {
+    ScreenContent("Video Screen")
+}
+
+@Composable
+fun SavedScreen() {
+    ScreenContent("Saved Screen")
+}
+
+@Composable
+fun AccountScreen() {
+    ScreenContent("Account Screen")
+}
+
+@Composable
+fun ScreenContent(title: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.LightGray),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = title, style = TextStyle(fontSize = 24.sp))
+    }
+}
+
+@Composable
+fun Menu(navController: NavHostController) {
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+
     Column {
         HorizontalDivider(thickness = 1.dp)
         Row(
@@ -83,23 +140,48 @@ fun Menu() {
                 .background(Color.White)
                 .padding(horizontal = 8.dp)
         ) {
-            MenuItem(icon = ImageVector.vectorResource(id = R.drawable.ic_home), name = "Trang chủ")
-            MenuItem(icon = ImageVector.vectorResource(id = R.drawable.ic_map), name = "Khám phá", active = true)
-            MenuItem(icon = ImageVector.vectorResource(id = R.drawable.ic_video), name = "Video")
-            MenuItem(icon = ImageVector.vectorResource(id = R.drawable.ic_saved), name = "Đã lưu")
-            MenuItem(icon = ImageVector.vectorResource(id = R.drawable.ic_account), name = "Tài khoản")
+            MenuItem(
+                icon = ImageVector.vectorResource(id = R.drawable.ic_home),
+                name = "Trang chủ",
+                active = currentRoute == "home",
+                onClick = { navController.navigate("home") }
+            )
+            MenuItem(
+                icon = ImageVector.vectorResource(id = R.drawable.ic_map),
+                name = "Khám phá",
+                active = currentRoute == "explore",
+                onClick = { navController.navigate("explore") }
+            )
+            MenuItem(
+                icon = ImageVector.vectorResource(id = R.drawable.ic_video),
+                name = "Video",
+                active = currentRoute == "video",
+                onClick = { navController.navigate("video") }
+            )
+            MenuItem(
+                icon = ImageVector.vectorResource(id = R.drawable.ic_saved),
+                name = "Đã lưu",
+                active = currentRoute == "saved",
+                onClick = { navController.navigate("saved") }
+            )
+            MenuItem(
+                icon = ImageVector.vectorResource(id = R.drawable.ic_account),
+                name = "Tài khoản",
+                active = currentRoute == "account",
+                onClick = { navController.navigate("account") }
+            )
         }
     }
-
 }
 
 @Composable
-fun MenuItem(icon: ImageVector, name: String, active: Boolean = false) {
+fun MenuItem(icon: ImageVector, name: String, active: Boolean, onClick: () -> Unit) {
     Column (
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .padding(10.dp)
             .wrapContentWidth()
+            .clickable { onClick() }
     ) {
         val colorId = if (active) R.color.teal1 else R.color.gray1
 
