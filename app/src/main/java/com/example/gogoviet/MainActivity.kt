@@ -74,7 +74,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-
             GoGoVietTheme {
                 val navController = rememberNavController()
                 Scaffold (
@@ -97,48 +96,6 @@ fun NavigationHost(navController: NavHostController, modifier: Modifier = Modifi
         composable("saved") { SavedScreen() }
         composable("account") { AccountScreen() }
     }
-}
-
-@Composable
-fun HomeScreen() {
-    ScreenContent("Home Screen")
-}
-
-@Composable
-fun ExploreScreen() {
-    val hanoi = LatLng(21.0278, 105.8342) // Example coordinates for Singapore
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(hanoi, 10f)
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        GoogleMap(
-            modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-/*            properties = MapProperties(mapType = MapType.HYBRID)*/
-        ) {
-            Marker(
-                state = MarkerState(position = hanoi),
-                title = "Hà Nội",
-                snippet = "Thủ đô của Việt Nam"
-            )
-        }
-    }
-}
-
-@Composable
-fun VideoScreen() {
-    ScreenContent("Video Screen")
-}
-
-@Composable
-fun SavedScreen() {
-    ScreenContent("Saved Screen")
-}
-
-@Composable
-fun AccountScreen() {
-    ScreenContent("Account Screen")
 }
 
 @Composable
