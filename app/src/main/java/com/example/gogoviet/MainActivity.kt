@@ -1,5 +1,6 @@
 package com.example.gogoviet
 
+import android.content.Context
 import android.graphics.drawable.Icon
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -80,7 +81,7 @@ class MainActivity : ComponentActivity() {
                     bottomBar = { Menu(navController) },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    innerPadding -> NavigationHost(navController, Modifier.padding(innerPadding))
+                    innerPadding -> NavigationHost(navController, this, Modifier.padding(innerPadding))
                 }
             }
         }
@@ -88,10 +89,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController, modifier: Modifier = Modifier) {
+fun NavigationHost(navController: NavHostController, context: Context, modifier: Modifier = Modifier) {
     NavHost(navController, startDestination = "home", modifier = modifier) {
         composable("home") { HomeScreen() }
-        composable("explore") { ExploreScreen() }
+        composable("explore") { ExploreScreen(context) }
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
         composable("account") { AccountScreen() }
