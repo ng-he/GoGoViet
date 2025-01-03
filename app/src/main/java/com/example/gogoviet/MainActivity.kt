@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.gogoviet.ui.theme.*
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -73,6 +74,13 @@ import com.google.maps.android.compose.MapUiSettings
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        var startDestination = "home"
+
+        if(intent.getStringExtra("screen") != null) {
+            startDestination = intent.getStringExtra("screen")!!
+        }
+
         enableEdgeToEdge()
         setContent {
             GoGoVietTheme {
@@ -81,7 +89,11 @@ class MainActivity : ComponentActivity() {
                     bottomBar = { Menu(navController) },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    innerPadding -> NavigationHost(navController, this, Modifier.padding(innerPadding))
+                    innerPadding -> NavigationHost(
+                        navController,
+                        this,
+                        startDestination,
+                        Modifier.padding(innerPadding))
                 }
             }
         }
@@ -89,8 +101,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController, context: Context, modifier: Modifier = Modifier) {
-    NavHost(navController, startDestination = "home", modifier = modifier) {
+fun NavigationHost(navController: NavHostController, context: Context, startDestination: String,modifier: Modifier = Modifier) {
+    NavHost(navController, startDestination = startDestination, modifier = modifier) {
         composable("home") { HomeScreen() }
         composable("explore") { ExploreScreen(context) }
         composable("video") { VideoScreen() }

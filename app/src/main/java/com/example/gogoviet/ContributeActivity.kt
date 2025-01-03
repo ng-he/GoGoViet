@@ -133,8 +133,7 @@ fun ContributeScreen(context: Context) {
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            val intent = Intent(context, MainActivity::class.java)
-                            context.startActivity(intent)
+                            goBack(context)
                         }
                     ) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -278,8 +277,7 @@ fun ContributeScreen(context: Context) {
             ) {
                 OutlinedButton(
                     onClick = {
-                        val intent = Intent(context, MainActivity::class.java)
-                        context.startActivity(intent)
+                        goBack(context)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -289,8 +287,7 @@ fun ContributeScreen(context: Context) {
                 Button(
                     onClick = {
                         places.add(addPlace)
-                        val intent = Intent(context, MainActivity::class.java)
-                        context.startActivity(intent)
+                        goBack(context)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -299,6 +296,12 @@ fun ContributeScreen(context: Context) {
             }
         }
     }
+}
+
+fun goBack(context: Context) {
+    val intent = Intent(context, MainActivity::class.java)
+    intent.putExtra("screen", "explore")
+    context.startActivity(intent)
 }
 
 @Composable
