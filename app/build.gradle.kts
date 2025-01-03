@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -60,6 +61,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material)
+    implementation(libs.firebase.auth)
+    implementation("com.google.firebase:firebase-auth:22.1.1") // Use the latest version
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -74,4 +78,9 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.accompanist.permissions)
     implementation(libs.coil.compose)
+    //splash screen
+    implementation("androidx.core:core-splashscreen:1.0.0")
+    //bruh
+    implementation("androidx.compose.runtime:runtime-livedata:1.4.3")
+
 }
