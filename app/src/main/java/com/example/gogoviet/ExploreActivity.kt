@@ -3,7 +3,9 @@ package com.example.gogoviet
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.location.Address
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -94,61 +96,16 @@ import com.google.android.gms.common.internal.safeparcel.SafeParcelable
 import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.maps.android.compose.CameraPositionState
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
+import kotlinx.serialization.json.Json
 
-val places = mutableListOf(
-    Place(
-        name = "Văn Miếu Quốc Tử Giám",
-        latLng = LatLng(21.028256689682053, 105.83567826735033),
-        reviews = mutableListOf(
-            Review("Hùng Nguyễn", "Nơi tuyệt vời với các tiện nghi tuyệt vời", 5),
-            Review("Tuấn Anh", "Điểm hoàn hảo cho chuyến đi chơi gia đình", 4)
-        ),
-        suggestions = mutableListOf(
-            Suggestion("Địa danh lịch sử", "Các tour du lịch có hướng dẫn có sẵn", R.drawable.ic_castle),
-            Suggestion("Vườn quốc gia Ba Vì", "Có rất nhiều loại thực vật", R.drawable.ic_tree)
-        ),
-        images = mutableListOf("vanmieu"),
-        category = "history",
-        description = "Văn Miếu – Quốc Tử Giám là quần thể di tích đa dạng, phong phú hàng đầu của thành phố Hà Nội, nằm ở phía Nam kinh thành Thăng Long.",
-        address = "58 P. Quốc Tử Giám, Văn Miếu, Đống Đa, Hà Nội"
-    ),
-    Place(
-        name = "Nhà Hàng Phong Dê Ninh Bình Cơ Sở 1",
-        latLng = LatLng(21.051019152198812, 105.77250583731765),
-        reviews = mutableListOf(
-            Review("Hùng Nguyễn", "Nơi tuyệt vời với các tiện nghi tuyệt vời", 5),
-            Review("Tuấn Anh", "Điểm hoàn hảo cho chuyến đi chơi gia đình", 4)
-        ),
-        suggestions = mutableListOf(
-            Suggestion("Địa danh lịch sử", "Các tour du lịch có hướng dẫn có sẵn", R.drawable.ic_castle),
-            Suggestion("Vườn quốc gia Ba Vì", "Có rất nhiều loại thực vật", R.drawable.ic_tree)
-        ),
-        images = mutableListOf("nhahang"),
-        category = "restaurant",
-        description = "Phong Dê Ninh Bình - Nhà hàng đặc sản Dê uy tín dành cho bạn!",
-        address = "Cổ Nhuế, Bắc Từ Liêm, Hà Nội"
-    ),
-    Place(
-        name = "Công viên Thống Nhất",
-        latLng = LatLng(21.01716191254088, 105.84438153916992),
-        reviews = mutableListOf(
-            Review("Hùng Nguyễn", "Nơi tuyệt vời với các tiện nghi tuyệt vời", 5),
-            Review("Tuấn Anh", "Điểm hoàn hảo cho chuyến đi chơi gia đình", 4)
-        ),
-        suggestions = mutableListOf(
-            Suggestion("Địa danh lịch sử", "Các tour du lịch có hướng dẫn có sẵn", R.drawable.ic_castle),
-            Suggestion("Vườn quốc gia Ba Vì", "Có rất nhiều loại thực vật", R.drawable.ic_tree)
-        ),
-        images = mutableListOf("congvien"),
-        category = "park",
-        description = "Công viên thành phố thoáng mát, nhộn nhịp, rợp bóng cây cao, có hồ nước lớn, lối đi tập thể dục và quán cà phê.",
-        address = "354A Đ. Lê Duẩn, Phương Liên, Đống Đa, Hà Nội"
-    ),
-)
+var places = loadPlacesFromRaw()
 
 @Composable
 fun ExploreScreen(context: Context) {
-   MapScreen(context)
+    MapScreen(context)
 }
 
 fun markerOf(placeType: String) : Int {
@@ -156,13 +113,14 @@ fun markerOf(placeType: String) : Int {
         "history" -> R.drawable.ic_history_map_marker
         "restaurant" -> R.drawable.ic_restaurant_map_marker
         "park" -> R.drawable.ic_park_map_marker
+        "landscapes" -> R.drawable.ic_landscapes_map_marker
         else -> 0
     }
 }
 
 @Composable
 fun FilterChips(selectedType: String, onTypeSelected: (String) -> Unit) {
-    val placeTypes = listOf("history", "restaurant", "park")
+    val placeTypes = listOf("history", "restaurant", "park", "landscapes")
 
     LazyRow(
         modifier = Modifier
@@ -197,6 +155,7 @@ fun placeTypeName(placeType: String): String {
         "history" -> "Di tích lịch sử"
         "restaurant" -> "Nhà hàng"
         "park" -> "Công viên"
+        "landscapes" -> "Danh lang thắng cảnh"
         else -> ""
     }
 }
@@ -206,8 +165,8 @@ fun searchLocation(query: String, selectedType: String): MutableList<Place> {
 
     places.forEach {
         place -> run {
-            if(place.name.startsWith(query, ignoreCase = true) &&
-                place.category.startsWith(selectedType, ignoreCase = true)) {
+            if(place.name.startsWith(query, ignoreCase = true) ||
+                placeTypeName(place.category).startsWith(selectedType, ignoreCase = true)) {
                 searchedPlaces.add(place)
             }
         }
@@ -390,11 +349,14 @@ fun BottomSheetContent(place: Place, context: Context) {
     }
 }
 
+@SuppressLint("DiscouragedApi")
 @Composable
 fun SuggestionItem(suggestion: Suggestion) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        val context = LocalContext.current
+
         Image(
-            painter = painterResource(id = suggestion.icon),
+            painter = painterResource(id = context.resources.getIdentifier(suggestion.icon, "drawable", context.packageName)),
             contentDescription = suggestion.title,
             modifier = Modifier.size(40.dp)
         )
@@ -490,8 +452,6 @@ fun MapScreen(context: Context) {
                 )
             }
         }
-
-
 
         Column(modifier = Modifier.fillMaxSize()) {
             Box(
@@ -757,11 +717,14 @@ fun ShareOption(label: String, onClick: () -> Unit) {
     }
 }
 
+@Serializable
 data class Review(val name: String, val comment: String, val rating: Int)
-data class Suggestion(val title: String, val description: String, val icon: Int)
+@Serializable
+data class Suggestion(val title: String, val description: String, val icon: String)
+@Serializable
 data class Place(
     var name: String = "",
-    var latLng: LatLng = LatLng(0.0, 0.0),
+    @Serializable(with = LatLngSerializer::class) var latLng: LatLng = LatLng(0.0, 0.0),
     val reviews: MutableList<Review>? = null,
     val suggestions: MutableList<Suggestion>? = null,
     val images: MutableList<String>? = null,
@@ -769,3 +732,52 @@ data class Place(
     var description: String = "",
     var address: String = ""
 )
+
+// Custom serializer for Google Maps LatLng
+@Serializer(forClass = LatLng::class)
+object LatLngSerializer : KSerializer<LatLng> {
+    override val descriptor: SerialDescriptor =
+        buildClassSerialDescriptor("LatLng") {
+            element<Double>("latitude")
+            element<Double>("longitude")
+        }
+
+    override fun serialize(encoder: Encoder, value: LatLng) {
+        val compositeEncoder = encoder.beginStructure(descriptor)
+        compositeEncoder.encodeDoubleElement(descriptor, 0, value.latitude)
+        compositeEncoder.encodeDoubleElement(descriptor, 1, value.longitude)
+        compositeEncoder.endStructure(descriptor)
+    }
+
+    override fun deserialize(decoder: Decoder): LatLng {
+        val compositeDecoder = decoder.beginStructure(descriptor)
+        var latitude = 0.0
+        var longitude = 0.0
+        loop@ while (true) {
+            when (val index = compositeDecoder.decodeElementIndex(descriptor)) {
+                0 -> latitude = compositeDecoder.decodeDoubleElement(descriptor, 0)
+                1 -> longitude = compositeDecoder.decodeDoubleElement(descriptor, 1)
+                CompositeDecoder.DECODE_DONE -> break@loop
+                else -> throw SerializationException("Unexpected index: $index")
+            }
+        }
+        compositeDecoder.endStructure(descriptor)
+        return LatLng(latitude, longitude)
+    }
+}
+
+fun loadPlacesFromRaw(): MutableList<Place> {
+    return try {
+        // Read JSON file as a string
+        val inputStream = MainActivity.getAppResources().openRawResource(R.raw.places)
+        val json = inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+
+        println(json)
+
+        // Deserialize JSON into a list of Place objects
+        Json.decodeFromString<MutableList<Place>>(json)
+    } catch (e: Exception) {
+        Log.e("LoadPlaces", "Error loading places: ${e.message}")
+        mutableListOf<Place>()
+    }
+}

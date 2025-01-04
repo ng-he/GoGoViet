@@ -1,6 +1,7 @@
 package com.example.gogoviet
 
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.drawable.Icon
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -72,8 +73,14 @@ import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        lateinit var instance: MainActivity
+        fun getAppResources(): Resources = instance.resources
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
 
         var startDestination = "home"
 
