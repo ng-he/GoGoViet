@@ -70,7 +70,7 @@ fun signup(modifier: Modifier = Modifier, navController: NavController, authView
 
         OutlinedTextField(value = password, onValueChange = {
             password = it
-        },,
+        },
             enabled = authState.value != AuthState.Loading,
             label = {
                 Text(text = "Mật khẩu")

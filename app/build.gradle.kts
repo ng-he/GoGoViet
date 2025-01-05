@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0"
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -60,6 +62,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.auth.v2211) // Use the latest version
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -74,4 +79,7 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.accompanist.permissions)
     implementation(libs.coil.compose)
+    implementation(libs.kotlinx.serialization.json.v163)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.runtime.livedata)
 }

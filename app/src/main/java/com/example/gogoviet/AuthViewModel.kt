@@ -1,6 +1,5 @@
 package com.example.gogoviet
 
-import android.os.Message
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel

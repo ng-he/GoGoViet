@@ -1,14 +1,13 @@
 package com.example.gogoviet
 
 import android.content.Context
-import android.graphics.drawable.Icon
+import android.content.res.Resources
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.BorderStroke
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,61 +19,45 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.sharp.Home
-import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.gogoviet.ui.theme.*
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapType
-import com.google.maps.android.compose.MapUiSettings
+import com.example.gogoviet.login.login
+import com.example.gogoviet.login.signup
+import com.example.gogoviet.ui.theme.GoGoVietTheme
+import com.example.gogoviet.ui.theme.Poppins
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        lateinit var ínstance: MainActivity
+        fun getAppResources(): Resources = ínstance.resources
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
+        ínstance = this
         var startDestination = "home"
 
         if(intent.getStringExtra("screen") != null) {
@@ -82,6 +65,7 @@ class MainActivity : ComponentActivity() {
         }
 
         enableEdgeToEdge()
+        val authViewModel : AuthViewModel by viewModels()
         setContent {
             GoGoVietTheme {
                 val navController = rememberNavController()
@@ -93,7 +77,8 @@ class MainActivity : ComponentActivity() {
                         navController,
                         this,
                         startDestination,
-                        Modifier.padding(innerPadding))
+                        Modifier.padding(innerPadding),
+                        authViewModel)
                 }
             }
         }
@@ -101,13 +86,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController, context: Context, startDestination: String,modifier: Modifier = Modifier) {
+fun NavigationHost(navController: NavHostController, context: Context, startDestination: String,modifier: Modifier = Modifier, authViewModel: AuthViewModel) {
     NavHost(navController, startDestination = startDestination, modifier = modifier) {
         composable("home") { HomeScreen() }
         composable("explore") { ExploreScreen(context) }
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
-        composable("account") { AccountScreen() }
+        composable("account") { AccountScreen(modifier, navController,authViewModel) }
+        composable("login") { login(modifier, navController,authViewModel)}
+        composable("signup") { signup(modifier, navController,authViewModel) }
     }
 }
 
