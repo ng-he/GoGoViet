@@ -37,17 +37,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+
 import com.example.gogoviet.AuthViewModel
 import com.example.gogoviet.R
 import com.example.gogoviet.UserInfo
 
 @Composable
-fun userUpdate(modifier: Modifier = Modifier,
-               navController: NavController,
-               authViewModel: AuthViewModel
+fun userUpdate(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    authViewModel: AuthViewModel
 ) {
-    val userInfoState = authViewModel.userInfo.observeAsState(UserInfo())
-    val userInfo = userInfoState.value
+    val userInfoState by authViewModel.userInfo.observeAsState(UserInfo())
+    val userInfo = userInfoState
+
     var name by remember { mutableStateOf(userInfo.name) }
     var email by remember { mutableStateOf(userInfo.email) }
     var address by remember { mutableStateOf(userInfo.address) }
@@ -63,12 +66,16 @@ fun userUpdate(modifier: Modifier = Modifier,
         imageUri = uri
     }
 
+    // Local loading state for the "Save" operation
+    var isUploading by remember { mutableStateOf(false) }
+
     // Update text field values when userInfo changes
     LaunchedEffect(userInfo) {
         name = userInfo.name
         address = userInfo.address
         gender = userInfo.gender
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -80,14 +87,14 @@ fun userUpdate(modifier: Modifier = Modifier,
         Spacer(modifier = Modifier.height(16.dp))
 
         AsyncImage(
-            model = imageUri ?: authViewModel.userInfo.value?.photoUrl ?: R.drawable.default_avatar,
+            model = imageUri ?: userInfo.photoUrl.ifEmpty { R.drawable.default_avatar },
             contentDescription = "Profile Picture",
             modifier = Modifier
                 .size(100.dp)
                 .clip(CircleShape)
                 .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
         )
-        Button(onClick = { launcher.launch("image/*") }) {
+        Button(onClick = { launcher.launch("image/*") }, enabled = !isUploading) {
             Text("Select Profile Picture")
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -96,7 +103,8 @@ fun userUpdate(modifier: Modifier = Modifier,
             value = name,
             onValueChange = { name = it },
             label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isUploading // Disable when uploading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -106,7 +114,7 @@ fun userUpdate(modifier: Modifier = Modifier,
             onValueChange = { email = it },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
-            enabled = false // Email is usually non-editable
+            enabled = false // Email is non-editable
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -115,7 +123,8 @@ fun userUpdate(modifier: Modifier = Modifier,
             value = address,
             onValueChange = { address = it },
             label = { Text("Address") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isUploading // Disable when uploading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -123,64 +132,77 @@ fun userUpdate(modifier: Modifier = Modifier,
         GenderDropdownMenu(
             genders = genders,
             selectedGender = gender,
-            onGenderSelected = { gender = it }
+            onGenderSelected = { gender = it },
+            isEnabled = !isUploading // Disable when uploading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            val updatedFields = mapOf(
-                "name" to name,
-                "address" to address,
-                "gender" to gender
-            )
-            val imageUriToUpload = imageUri // Capture the current imageUri
+        Button(
+            onClick = {
+                isUploading = true // Start loading state
+                val updatedFields = mapOf(
+                    "name" to name,
+                    "address" to address,
+                    "gender" to gender
+                )
+                val imageUriToUpload = imageUri
 
-            // First, handle profile picture upload if imageUri is selected
-            if (imageUriToUpload != null) {
-                authViewModel.uploadProfilePicture(imageUriToUpload,
-                    onSuccess = { photoUrl ->
-                        // Add the photoUrl to updatedFields and update Firestore
-                        val updatedFieldsWithPhoto = updatedFields.toMutableMap()
-                        updatedFieldsWithPhoto["photoUrl"] = photoUrl
-                        authViewModel.updateUserInfo(updatedFieldsWithPhoto,
-                            onSuccess = {
-                                Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
-                                navController.navigate("account") // Navigate back
-                            },
-                            onFailure = { error ->
-                                Toast.makeText(context, "Update failed: $error", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    },
-                    onFailure = { error ->
-                        Toast.makeText(context, "Failed to upload image: $error", Toast.LENGTH_SHORT).show()
-                    }
-                )
+                if (imageUriToUpload != null) {
+                    authViewModel.uploadProfilePicture(imageUriToUpload,
+                        onSuccess = { photoUrl ->
+                            val updatedFieldsWithPhoto = updatedFields.toMutableMap()
+                            updatedFieldsWithPhoto["photoUrl"] = photoUrl
+                            authViewModel.updateUserInfo(updatedFieldsWithPhoto,
+                                onSuccess = {
+                                    isUploading = false // End loading state
+                                    Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+                                    navController.navigate("account")
+                                },
+                                onFailure = { error ->
+                                    isUploading = false // End loading state
+                                    Toast.makeText(context, "Update failed: $error", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        },
+                        onFailure = { error ->
+                            isUploading = false // End loading state
+                            Toast.makeText(context, "Failed to upload image: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                } else {
+                    authViewModel.updateUserInfo(updatedFields,
+                        onSuccess = {
+                            isUploading = false // End loading state
+                            Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+                            navController.navigate("account")
+                        },
+                        onFailure = { error ->
+                            isUploading = false // End loading state
+                            Toast.makeText(context, "Update failed: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+            },
+            enabled = !isUploading // Disable the button when uploading
+        ) {
+            if (isUploading) {
+                Text("Saving...") // Show loading state
             } else {
-                // If no image is selected, update only text fields
-                authViewModel.updateUserInfo(updatedFields,
-                    onSuccess = {
-                        Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
-                        navController.navigate("account") // Navigate back
-                    },
-                    onFailure = { error ->
-                        Toast.makeText(context, "Update failed: $error", Toast.LENGTH_SHORT).show()
-                    }
-                )
+                Text("Save")
             }
-        }) {
-            Text("Save")
         }
     }
 }
+
 @Composable
 fun GenderDropdownMenu(
     genders: List<String>,
     selectedGender: String,
-    onGenderSelected: (String) -> Unit
+    onGenderSelected: (String) -> Unit,
+    isEnabled: Boolean = true
 ) {
-    var expanded by remember { mutableStateOf(false) } // State to control menu visibility
+    var expanded by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -188,9 +210,10 @@ fun GenderDropdownMenu(
             onValueChange = {}, // No manual input, only dropdown selection
             label = { Text("Gender") },
             readOnly = true,
+            enabled = isEnabled, // Disable dropdown when uploading
             modifier = Modifier.fillMaxWidth(),
             trailingIcon = {
-                IconButton(onClick = { expanded = !expanded }) {
+                IconButton(onClick = { if (isEnabled) expanded = !expanded }) {
                     Icon(
                         imageVector = Icons.Default.ArrowDropDown,
                         contentDescription = "Dropdown"
@@ -209,22 +232,9 @@ fun GenderDropdownMenu(
                         onGenderSelected(gender)
                         expanded = false
                     },
-                    text = { Text(text = gender) } // Updated text parameter
+                    text = { Text(text = gender) }
                 )
             }
         }
-    }
-}
-@Composable
-fun UpdateProfilePicture(onImageSelected: (Uri) -> Unit) {
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { onImageSelected(it) }
-    }
-
-    Button(onClick = { launcher.launch("image/*") }) {
-        Text("Change Profile Picture")
     }
 }
