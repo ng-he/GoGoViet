@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,11 +24,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.gogoviet.AuthState
 import com.example.gogoviet.AuthViewModel
+import com.example.gogoviet.R
 
 @Composable
 fun signup(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel) {
@@ -37,6 +43,14 @@ fun signup(modifier: Modifier = Modifier, navController: NavController, authView
     var password by remember {
         mutableStateOf("")
     }
+
+    var username by remember {
+        mutableStateOf("")
+    }
+
+    //Toggle password visibility
+    var passwordVisibility: Boolean by remember { mutableStateOf(false) }
+
 
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
@@ -59,27 +73,41 @@ fun signup(modifier: Modifier = Modifier, navController: NavController, authView
         Text("GOGO VIỆT", fontSize = 36.sp)
         Spacer(modifier = Modifier.height(16.dp))
 
+        OutlinedTextField(value = username, onValueChange = {
+            username = it
+        },enabled = authState.value != AuthState.Loading,
+            label = {
+                Text("Username")
+            })
+
+        Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(value = email, onValueChange = {
             email = it
-        },
+        },enabled = authState.value != AuthState.Loading,
             label = {
                 Text(text = "Email")
             })
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(value = password, onValueChange = {
-            password = it
-        },,
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Mật khẩu") },
             enabled = authState.value != AuthState.Loading,
-            label = {
-                Text(text = "Mật khẩu")
-            })
+            visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisibility = !passwordVisibility }) {
+                    Text(if (passwordVisibility) "👁️" else "🙈")
+                }
+            }
+        )
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
-            authViewModel.signup(email,password)
+            authViewModel.signup(email,password,username)
         }) { Text("Đăng ký") }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -89,4 +117,6 @@ fun signup(modifier: Modifier = Modifier, navController: NavController, authView
         }) { Text("Đã có tài khoản? Đăng nhập") }
     }
 }
+
+
 

@@ -63,7 +63,8 @@ dependencies {
     implementation(libs.androidx.compose.material)
     implementation(libs.firebase.auth)
     implementation("com.google.firebase:firebase-auth:22.1.1") // Use the latest version
-
+    implementation("com.google.firebase:firebase-firestore-ktx:25.1.0")
+    implementation(libs.firebase.storage.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -82,5 +83,8 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.0.0")
     //bruh
     implementation("androidx.compose.runtime:runtime-livedata:1.4.3")
+    //handle picture
+    implementation("io.coil-kt:coil-compose:2.2.2")
+
 
 }

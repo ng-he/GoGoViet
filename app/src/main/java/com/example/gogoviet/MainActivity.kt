@@ -44,6 +44,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.gogoviet.login.login
 import com.example.gogoviet.login.signup
+import userUpdate
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,6 +90,7 @@ fun NavigationHost(navController: NavHostController, context: Context, startDest
         composable("account") { AccountScreen(modifier, navController,authViewModel) }
         composable("login") { login(modifier, navController,authViewModel)}
         composable("signup") { signup(modifier, navController,authViewModel) }
+        composable("updateProfile") { userUpdate(modifier, navController,authViewModel) }
     }
 }
 
