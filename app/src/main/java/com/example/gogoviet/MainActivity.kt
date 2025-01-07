@@ -1,5 +1,6 @@
 package com.example.gogoviet
 
+
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -44,6 +45,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.gogoviet.login.login
 import com.example.gogoviet.login.signup
+import com.example.s2travel.HomeScreen
 import userUpdate
 
 class MainActivity : ComponentActivity() {
@@ -83,7 +85,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun NavigationHost(navController: NavHostController, context: Context, startDestination: String,modifier: Modifier = Modifier,authViewModel: AuthViewModel) {
     NavHost(navController, startDestination = startDestination, modifier = modifier) {
-        composable("home") { HomeScreen() }
+        composable("home") { HomeScreen(modifier) }
         composable("explore") { ExploreScreen(context) }
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
