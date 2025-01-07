@@ -63,6 +63,8 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material)
     implementation(libs.firebase.auth)
+    implementation("com.google.firebase:firebase-firestore-ktx:25.1.0")
+    implementation(libs.firebase.storage.ktx)
     implementation(libs.firebase.auth.v2211) // Use the latest version
 
     testImplementation(libs.junit)
@@ -79,6 +81,10 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.accompanist.permissions)
     implementation(libs.coil.compose)
+    //handle picture
+    implementation(libs.coil.compose.v222)
+
+
     implementation(libs.kotlinx.serialization.json.v163)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.runtime.livedata)

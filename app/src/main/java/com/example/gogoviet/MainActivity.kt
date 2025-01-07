@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.gogoviet.ui.theme.*
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -44,6 +45,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.gogoviet.login.login
 import com.example.gogoviet.login.signup
+import userUpdate
 import com.example.gogoviet.ui.theme.GoGoVietTheme
 import com.example.gogoviet.ui.theme.Poppins
 
@@ -95,6 +97,7 @@ fun NavigationHost(navController: NavHostController, context: Context, startDest
         composable("account") { AccountScreen(modifier, navController,authViewModel) }
         composable("login") { login(modifier, navController,authViewModel)}
         composable("signup") { signup(modifier, navController,authViewModel) }
+        composable("updateProfile") { userUpdate(modifier, navController,authViewModel) }
     }
 }
 
