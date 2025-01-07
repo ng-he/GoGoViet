@@ -270,7 +270,7 @@ fun authedscreen(modifier: Modifier = Modifier, navController: NavController,use
             ),
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(24.dp))
+
 
         // "Thông tin cá nhân" Row
         Row(
@@ -297,7 +297,7 @@ fun authedscreen(modifier: Modifier = Modifier, navController: NavController,use
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+
 
 
 
@@ -313,7 +313,7 @@ fun authedscreen(modifier: Modifier = Modifier, navController: NavController,use
             Triple(R.drawable.vector, "Liên hệ hotline", null),
             Triple(R.drawable.iconparklogout, "Đăng xuất") {
                 authViewModel.signout()
-                navController.navigate("login")
+                navController.navigate("account")
             }
         )
 
