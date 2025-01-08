@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.gogoviet.login
 
 import android.preference.PreferenceActivity
@@ -18,12 +20,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,36 +84,49 @@ fun signup(modifier: Modifier = Modifier, navController: NavController, authView
             else -> Unit
         }
     }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Color(0xFFFFFFFF))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 16.dp)
-        ) {
-
-            Spacer(modifier = Modifier.height(16.dp))
-            NgK(
-                username = username,
-                onUsernameChange = { username = it },
-                email = email,
-                onEmailChange = { email = it },
-                password = password,
-                onPasswordChange = { password = it },
-                onSignupClick = {
-                    authViewModel.signup(email, password, username)
-                },
-                isLoading = authState == AuthState.Loading,
-                navController = navController
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(text = "Đăng Ký") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color(0xFF223263)
+                )
             )
-        }
+        },
+        content = { paddingValues ->
+            Box(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFFFFF))
+                    .padding(paddingValues)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 16.dp)
+                ) {
 
-    }}
+                    Spacer(modifier = Modifier.height(16.dp))
+                    NgK(
+                        username = username,
+                        onUsernameChange = { username = it },
+                        email = email,
+                        onEmailChange = { email = it },
+                        password = password,
+                        onPasswordChange = { password = it },
+                        onSignupClick = {
+                            authViewModel.signup(email, password, username)
+                        },
+                        isLoading = authState == AuthState.Loading,
+                        navController = navController
+                    )
+                }
+
+            }
+        })
+}
 @Composable
 fun NgK(
     username: String,
@@ -193,7 +212,7 @@ fun NgK(
         ) {
             Divider(color = Color(0xffadadad), modifier = Modifier.weight(1f))
             Text(
-                text = "Hoặc đăng ký bằng",
+                text = "Hoặc đăng ký bằng(Coming soon)",
                 color = Color(0xff707070),
                 style = TextStyle(fontSize = 13.sp),
                 modifier = Modifier.padding(horizontal = 8.dp)

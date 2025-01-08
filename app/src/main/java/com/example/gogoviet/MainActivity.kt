@@ -43,10 +43,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+
 import com.example.gogoviet.login.login
+
 import com.example.gogoviet.login.signup
+import com.example.gogoviet.login.userUpdate
 import com.example.s2travel.HomeScreen
-import userUpdate
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,7 +93,7 @@ fun NavigationHost(navController: NavHostController, context: Context, startDest
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
         composable("account") { AccountScreen(modifier, navController,authViewModel) }
-        composable("login") { login(modifier, navController,authViewModel)}
+        composable("login") { login(modifier, navController,authViewModel) }
         composable("signup") { signup(modifier, navController,authViewModel) }
         composable("updateProfile") { userUpdate(modifier, navController,authViewModel) }
     }

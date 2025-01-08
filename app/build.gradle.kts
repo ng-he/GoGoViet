@@ -65,6 +65,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth:22.1.1") // Use the latest version
     implementation("com.google.firebase:firebase-firestore-ktx:25.1.0")
     implementation(libs.firebase.storage.ktx)
+    implementation(libs.androidx.material.icons.core.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
