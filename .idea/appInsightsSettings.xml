@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.gogoviet" />
+                  <option name="mobileSdkAppId" value="1:75926618893:android:31ffbc0d2eecbc382fe644" />
+                  <option name="projectId" value="gogo-viet-26dda" />
+                  <option name="projectNumber" value="75926618893" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

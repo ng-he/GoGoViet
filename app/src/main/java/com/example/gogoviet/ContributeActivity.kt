@@ -48,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,27 +60,37 @@ import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.OutlinedButton
 import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
+import com.example.gogoviet.data.models.PlacesCoreData
 import com.example.gogoviet.ui.theme.GoGoVietTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-
-val addPlace = Place(images = mutableListOf("default_image"))
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 class ContributeActivity: ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val user = intent.getStringExtra("user")
+
         enableEdgeToEdge()
         setContent {
             GoGoVietTheme {
-                ContributeScreen(this)
+                ContributeScreen(this, user!!)
             }
         }
     }
@@ -87,7 +98,13 @@ class ContributeActivity: ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun ContributeScreen(context: Context) {
+fun ContributeScreen(context: Context, user: String) {
+    var placeName by remember { mutableStateOf("") }
+    var placeDescription by remember { mutableStateOf("") }
+    var placeCategory by remember { mutableStateOf("") }
+    var placeAddress by remember { mutableStateOf("") }
+    var placeLocation by remember { mutableStateOf(LatLng(0.0, 0.0)) }
+
     val fusedLocationProviderClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
@@ -98,7 +115,6 @@ fun ContributeScreen(context: Context) {
 
     var expanded by remember { mutableStateOf(false) }
 
-    val categories = listOf("history", "restaurant", "park")
     var selectedCategory by remember { mutableStateOf("") }
 
     var selectedImages by remember { mutableStateOf<List<Uri>>(emptyList()) }
@@ -107,6 +123,8 @@ fun ContributeScreen(context: Context) {
     ) {
         uris -> selectedImages = uris
     }
+
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         if (ActivityCompat.checkSelfPermission(
@@ -118,6 +136,7 @@ fun ContributeScreen(context: Context) {
                 location?.let {
                     println("user location ${it.latitude} - ${it.longitude}")
                     selectedLocation = LatLng(it.latitude, it.longitude)
+                    placeLocation = LatLng(it.latitude, it.longitude)
                     cameraPositionState.position = CameraPosition.fromLatLngZoom(selectedLocation!!, 15f)
                 }
             }
@@ -162,9 +181,9 @@ fun ContributeScreen(context: Context) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Input Fields
-            InputField(label = "Tên địa điểm (bắt buộc)*", onValueChange = {str -> run { addPlace.name = str }})
+            InputField(label = "Tên địa điểm (bắt buộc)*", onValueChange = {str -> run { placeName = str }})
             Spacer(modifier = Modifier.height(8.dp))
-            InputField(label = "Mô tả", onValueChange = { str -> run { addPlace.description = str }})
+            InputField(label = "Mô tả", onValueChange = { str -> run { placeDescription = str }})
             Spacer(modifier = Modifier.height(8.dp))
 
             // drop down list
@@ -173,7 +192,7 @@ fun ContributeScreen(context: Context) {
                 onExpandedChange = { expanded = !expanded }
             ) {
                 OutlinedTextField(
-                    value = placeTypeName(selectedCategory),
+                    value = selectedCategory,
                     onValueChange = { },
                     label = { Text("Danh mục (bắt buộc)*") },
                     trailingIcon = {
@@ -190,12 +209,12 @@ fun ContributeScreen(context: Context) {
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    categories.forEach { category ->
+                    categoriesGlobal.forEach { category ->
                         DropdownMenuItem(
-                            text = { Text(text = placeTypeName(category)) },
+                            text = { Text(text = category) },
                             onClick = {
                                 selectedCategory = category
-                                addPlace.category = category
+                                placeCategory = category
                                 expanded = false
                             }
                         )
@@ -207,7 +226,7 @@ fun ContributeScreen(context: Context) {
             InputFieldWithIcon(
                 label = "Địa chỉ (bắt buộc)*",
                 icon = Icons.Default.LocationOn,
-                onValueChange = {str -> run { addPlace.address = str }}
+                onValueChange = {str -> run { placeAddress = str }}
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -229,7 +248,7 @@ fun ContributeScreen(context: Context) {
                     properties = MapProperties(isMyLocationEnabled = true),
                     onMapClick = { latLng ->
                         selectedLocation = latLng
-                        addPlace.latLng = latLng
+                        placeLocation = latLng
                     }
                 ) {
                     selectedLocation?.let {
@@ -286,8 +305,36 @@ fun ContributeScreen(context: Context) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = {
-                        places.add(addPlace)
-                        goBack(context)
+                        val db = FirebaseFirestore.getInstance()
+                        val contributionsCollection = db.collection("Contributions")
+                        val contributionPlace: MutableMap<String, Any> = HashMap()
+
+                        contributionPlace["name"] = placeName
+                        contributionPlace["description"] = placeDescription
+                        contributionPlace["category"] = placeCategory
+                        contributionPlace["address"] = placeAddress
+                        contributionPlace["location"] = hashMapOf(
+                            "latitude" to placeLocation.latitude,
+                            "longitude" to placeLocation.longitude
+                        )
+
+                        contributionPlace["user"] = user
+
+                        if(selectedImages.isNotEmpty()) {
+                            coroutineScope.launch {
+                                val photoUrls = selectedImages.map { uri ->
+                                    async {
+                                        uploadImageToFirebase(uri)
+                                    }
+                                }.awaitAll().filterNotNull() // Collect all successful URLs
+
+                                contributionPlace["photos"] = photoUrls
+                                addPlace(context, contributionsCollection, contributionPlace)
+                            }
+                        }
+                        else {
+                            addPlace(context, contributionsCollection, contributionPlace)
+                        }
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -298,10 +345,51 @@ fun ContributeScreen(context: Context) {
     }
 }
 
+fun addPlace(context: Context, collection: CollectionReference, place: MutableMap<String, Any>) {
+    collection.document().set(place)
+        .addOnSuccessListener {
+        println("Contribution added successfully!")
+        goBack(context) // Navigate back after saving
+        }
+        .addOnFailureListener { e ->
+            println("Failed to add contribution: ${e.message}")
+        }
+}
+
 fun goBack(context: Context) {
     val intent = Intent(context, MainActivity::class.java)
     intent.putExtra("screen", "explore")
     context.startActivity(intent)
+}
+
+suspend fun uploadImageToFirebase(uri: Uri): String? {
+    return try {
+        // Get Firebase Storage instance
+        val storageReference = FirebaseStorage.getInstance().reference
+
+        // Create a unique name for the file
+        val fileName = "images/${UUID.randomUUID()}.jpg"
+        val fileReference = storageReference.child(fileName)
+
+        // Upload the file
+        val uploadTask = fileReference.putFile(uri).await()
+
+        // Get the download URL
+        fileReference.downloadUrl.await().toString()
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+fun saveImageUrlToFirestore(url: String) {
+    val db = FirebaseFirestore.getInstance()
+    val imageDoc = hashMapOf("url" to url)
+
+    db.collection("images")
+        .add(imageDoc)
+        .addOnSuccessListener { println("Image URL saved successfully!") }
+        .addOnFailureListener { e -> println("Error saving URL: ${e.message}") }
 }
 
 @Composable

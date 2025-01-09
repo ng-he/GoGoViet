@@ -1,13 +1,21 @@
 package com.example.gogoviet
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
+import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +61,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +72,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -70,19 +83,46 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.app.ActivityCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
+import coil.ImageLoader
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import com.example.gogoviet.data.DataProvider
+import com.example.gogoviet.data.models.ContributedPlace
+import com.example.gogoviet.data.models.PlacesCoreData
+import com.example.gogoviet.data.models.PlacesRichData
+import com.example.gogoviet.data.models.Review
 import com.example.gogoviet.ui.theme.Teal1
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.Filter
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -94,39 +134,31 @@ import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import java.lang.reflect.TypeVariable
+import kotlin.collections.HashMap
 
-var places = loadPlacesFromRaw()
+
+var placesApiGlobal = emptyList<PlacesCoreData>()
+var categoriesGlobal = emptySet<String>()
 
 @Composable
-fun ExploreScreen(context: Context) {
-    MapScreen(context)
-}
-
-fun markerOf(placeType: String) : Int {
-    return when(placeType) {
-        "history" -> R.drawable.ic_history_map_marker
-        "restaurant" -> R.drawable.ic_restaurant_map_marker
-        "park" -> R.drawable.ic_park_map_marker
-        "landscapes" -> R.drawable.ic_landscapes_map_marker
-        else -> 0
-    }
+fun ExploreScreen(context: Context, authViewModel: AuthViewModel) {
+    MapScreen(context, authViewModel)
 }
 
 @Composable
-fun FilterChips(selectedType: String, onTypeSelected: (String) -> Unit) {
-    val placeTypes = listOf("history", "restaurant", "park", "landscapes")
-
+fun FilterChips(categories: MutableSet<String>, selectedType: String, onTypeSelected: (String) -> Unit) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        items(placeTypes) { type ->
+        items(categories.toTypedArray()) { type ->
             Chip(
                 onClick = { onTypeSelected(type) },
                 label = {
-                    Text(text = placeTypeName(type))
+                    Text(text = type)
                 },
                 modifier = Modifier
                     .height(40.dp)
@@ -144,23 +176,12 @@ fun FilterChips(selectedType: String, onTypeSelected: (String) -> Unit) {
     }
 }
 
-fun placeTypeName(placeType: String): String {
-    return when(placeType) {
-        "history" -> "Di tích lịch sử"
-        "restaurant" -> "Nhà hàng"
-        "park" -> "Công viên"
-        "landscapes" -> "Danh lang thắng cảnh"
-        else -> ""
-    }
-}
+fun searchLocation(query: String, selectedType: String, placesApi: List<PlacesCoreData>): MutableList<PlacesCoreData> {
+    val searchedPlaces = mutableListOf<PlacesCoreData>()
 
-fun searchLocation(query: String, selectedType: String): MutableList<Place> {
-    val searchedPlaces = mutableListOf<Place>()
-
-    places.forEach {
+    placesApi.forEach {
         place -> run {
-            if(place.name.startsWith(query, ignoreCase = true) ||
-                placeTypeName(place.category).startsWith(selectedType, ignoreCase = true)) {
+            if(place.name?.contains(query, ignoreCase = true) == true && (place.categories[0].name).contains(selectedType, ignoreCase = true)) {
                 searchedPlaces.add(place)
             }
         }
@@ -169,13 +190,320 @@ fun searchLocation(query: String, selectedType: String): MutableList<Place> {
     return searchedPlaces
 }
 
-@SuppressLint("DiscouragedApi")
+@SuppressLint("DiscouragedApi", "DefaultLocale")
 @Composable
-fun BottomSheetContent(place: Place, context: Context) {
+fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: AuthViewModel) {
+    val db = FirebaseFirestore.getInstance()
+    val placeCollection = db.collection("Places")
+
+    val authState = authViewModel.authState.observeAsState()
+    val userInfoState = authViewModel.userInfo.observeAsState(UserInfo())
+    val userInfo = userInfoState.value
+
     var showDialog by remember { mutableStateOf(false) }
     var selectedStars by remember { mutableIntStateOf(0) }
     var comment by remember { mutableStateOf("") }
     var showShareDialog by remember { mutableStateOf(false) }
+
+    var placesDetails: PlacesRichData? = PlacesRichData()
+    var urls by remember { mutableStateOf(emptyList<String>()) }
+    var images by remember { mutableStateOf(mapOf<String, ImageBitmap?>()) }
+
+    var reviews by remember {
+        mutableStateOf(emptyList<Review>())
+    }
+
+    LaunchedEffect(Unit) {
+        placeCollection.document(place.fsqId!!).get().addOnSuccessListener {
+            if(it.get("reviews") != null) {
+                val reviewsArray = it.get("reviews") as? List<HashMap<String, Any>>
+                if (reviewsArray != null) {
+                    // Map HashMap to Review objects
+                    reviews = reviewsArray.map { reviewMap ->
+                        Review(
+                            username = reviewMap["username"] as String,
+                            comment = reviewMap["comment"] as String,
+                            rating = (reviewMap["rating"] as Long).toInt()
+                        )
+                    }
+                    println("Reviews: $reviews")
+                } else {
+                    println("No reviews found")
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        place.fsqId.let {
+            if (it != null) {
+                DataProvider.getPlacesDetail(placeId = it) { it ->
+                    placesDetails = it
+                    urls = placesDetails?.photos?.map { "${it.prefix}800x600${it.suffix}" } ?: emptyList()
+                }
+            }
+        }
+    }
+
+    images = rememberPlaceImages(urls, backgroundColor = Color.White.value.toInt())
+
+    Column(modifier = Modifier
+        .padding(16.dp)
+        .verticalScroll(rememberScrollState())
+    ) {
+        place.name?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        place.location?.formattedAddress?.ifEmpty { "Chưa được cung cấp địa chỉ" }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        placesDetails?.description?.let { Text(text = it, modifier = Modifier.padding(bottom = 10.dp)) }
+        place.distance?.let { Text(text = "${String.format("%.2f", (it.toDouble() / 1000))}km") }
+
+        Row(modifier = Modifier
+            .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Chip(
+                onClick = {
+                    if(authState.value is AuthState.Unauthenticated) {
+                        val intent = Intent(context, MainActivity::class.java)
+                        intent.putExtra("screen", "login")
+                        context.startActivity(intent)
+                    }
+                    else {
+                        Toast.makeText(context, "Đã lưu địa điểm", Toast.LENGTH_LONG).show()
+                    }
+                },
+                label = {
+                    Text(text = "Lưu")
+                },
+                modifier = Modifier
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
+                colors = ChipDefaults.chipColors(
+                    backgroundColor = Color(0x337F97FF),
+                    contentColor = Color.White
+                ),
+                icon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_save),
+                        contentDescription = ""
+                    )
+                }
+            )
+
+            Chip(
+                onClick = { showShareDialog = true },
+                label = {
+                    Text(text = "Chia sẻ")
+                },
+                modifier = Modifier
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
+                colors = ChipDefaults.chipColors(
+                    backgroundColor = Color(0x337F97FF),
+                    contentColor = Color.White
+                ),
+                icon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_share),
+                        contentDescription = ""
+                    )
+                }
+            )
+        }
+
+        if (showShareDialog) {
+            ShareDialog(
+                message = """
+                    Hãy xem địa điểm tuyệt vời này!
+                    - ${place.name}
+                    - ${place.location?.formattedAddress}
+                    """.trimIndent(),
+                onDismiss = { showShareDialog = false }
+            )
+        }
+
+        LazyRow(
+            modifier = Modifier
+                .padding(vertical = 8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(images.keys.toTypedArray()) { key ->
+                images[key]?.let {
+                    println(" - Bottom Slide: $key")
+                    Image(
+                        painter = BitmapPainter(image = it),
+                        contentDescription = place.name,
+                        modifier = Modifier
+                            .clip(
+                                shape = RoundedCornerShape(
+                                    topStart = 16.dp,
+                                    topEnd = 16.dp,
+                                    bottomStart = 16.dp,
+                                    bottomEnd = 16.dp
+                                )
+                            )
+                            .fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        Text(text = "Đánh giá của khách thăm quan", style = MaterialTheme.typography.titleMedium)
+        LazyRow(
+            modifier = Modifier.padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(reviews) { review ->
+                ReviewCard(review)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Chip(
+                onClick =
+                {
+                    if(authState.value is AuthState.Unauthenticated) {
+                        val intent = Intent(context, MainActivity::class.java)
+                        intent.putExtra("screen", "login")
+                        context.startActivity(intent)
+                    }
+                    else {
+                        showDialog = true
+                    }
+                },
+                label = {
+                    Text(text = "Viết bài đánh giá")
+                },
+                modifier = Modifier
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp)
+                    .align(alignment = Alignment.Center),
+                colors = ChipDefaults.chipColors(
+                    backgroundColor = Color(0x337F97FF),
+                    contentColor = Color.White
+                ),
+                icon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_comment),
+                        contentDescription = ""
+                    )
+                }
+            )
+
+            CommentDialog(
+                showDialog = showDialog,
+                onDismiss = { showDialog = false },
+                onSubmit = { stars, commentText ->
+                    val review: MutableMap<String, Any> = HashMap()
+
+                    review["username"] = userInfo.name.ifEmpty { userInfo.email }
+                    review["comment"] = commentText
+                    review["rating"] = stars
+
+                    placeCollection.document(place.fsqId!!).get()
+                        .addOnSuccessListener {
+                            if(it.exists()) {
+                                placeCollection.document(place.fsqId!!)
+                                    .update("reviews", FieldValue.arrayUnion(review))
+                                    .addOnSuccessListener { println("add review success") }
+                            }
+                            else {
+                                val addPlace: MutableMap<String, Any> = HashMap()
+                                addPlace["reviews"] = listOf(review)
+                                placeCollection.document(place.fsqId!!).set(addPlace)
+                                    .addOnSuccessListener { println("add review success") }
+                            }
+                        }
+
+                    selectedStars = stars
+                    comment = commentText
+
+                    println("Stars: $stars, Comment: $commentText")
+                }
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            place.relatedPlaces?.let { it ->
+                if(it.parent != null || it.children != null) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                    Text(text = "Gợi ý địa điểm", style = MaterialTheme.typography.titleMedium)
+                }
+
+                it.parent?.let {
+                    SuggestionItem(place = it)
+                }
+
+                it.children?.forEach {
+                    SuggestionItem(place = it)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomSheetContentForContributedPlace(place: ContributedPlace, context: Context, authViewModel: AuthViewModel) {
+    val db = FirebaseFirestore.getInstance()
+    val contributedPlaceCollection = db.collection("Contributions")
+
+    val authState = authViewModel.authState.observeAsState()
+    val userInfoState = authViewModel.userInfo.observeAsState(UserInfo())
+    val userInfo = userInfoState.value
+
+    var showDialog by remember { mutableStateOf(false) }
+    var selectedStars by remember { mutableIntStateOf(0) }
+    var comment by remember { mutableStateOf("") }
+    var showShareDialog by remember { mutableStateOf(false) }
+
+    var imagesUrl by remember { mutableStateOf(emptyList<String>()) }
+    var reviews by remember { mutableStateOf(emptyList<Review>()) }
+
+    LaunchedEffect(Unit) {
+        contributedPlaceCollection.document(place.id).get().addOnSuccessListener {
+            CoroutineScope(Dispatchers.IO).launch {
+                launch {
+                    if(it.get("photos") != null) {
+                        imagesUrl = it.get("photos") as List<String>
+                    }
+                }
+
+                launch {
+                    if(it.get("reviews") != null) {
+                        val reviewsArray = it.get("reviews") as? List<HashMap<String, Any>>
+                        if (reviewsArray != null) {
+                            // Map HashMap to Review objects
+                            reviews = reviewsArray.map { reviewMap ->
+                                Review(
+                                    username = reviewMap["username"] as String,
+                                    comment = reviewMap["comment"] as String,
+                                    rating = (reviewMap["rating"] as Long).toInt()
+                                )
+                            }
+                            println("Reviews: $reviews")
+                        } else {
+                            println("No reviews found")
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Column(modifier = Modifier
         .padding(16.dp)
@@ -188,10 +516,18 @@ fun BottomSheetContent(place: Place, context: Context) {
         )
 
         Text(
-            text = place.address.ifEmpty { "Chưa được cung cấp địa chỉ" },
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(bottom = 8.dp)
+            text = "Đóng góp bởi: ${place.user}"
         )
+
+        place.address.ifEmpty { "Chưa được cung cấp địa chỉ" }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        Text(text = place.description, modifier = Modifier.padding(bottom = 10.dp))
 
         Row(modifier = Modifier
             .fillMaxWidth(),
@@ -199,7 +535,14 @@ fun BottomSheetContent(place: Place, context: Context) {
         ) {
             Chip(
                 onClick = {
-                    Toast.makeText(context, "Đã lưu địa điểm", Toast.LENGTH_LONG).show()
+                    if(authState.value is AuthState.Unauthenticated) {
+                        val intent = Intent(context, MainActivity::class.java)
+                        intent.putExtra("screen", "login")
+                        context.startActivity(intent)
+                    }
+                    else {
+                        Toast.makeText(context, "Đã lưu địa điểm", Toast.LENGTH_LONG).show()
+                    }
                 },
                 label = {
                     Text(text = "Lưu")
@@ -251,18 +594,17 @@ fun BottomSheetContent(place: Place, context: Context) {
             )
         }
 
-        if(place.images != null) {
+        if(imagesUrl.isNotEmpty()) {
             LazyRow(
                 modifier = Modifier
                     .padding(vertical = 8.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(place.images) { image ->
+                items(imagesUrl) { url ->
+                    println(" - Bottom Slide: $url")
                     Image(
-                        painter = painterResource(
-                            id = LocalContext.current.resources.getIdentifier(image, "drawable", LocalContext.current.packageName)
-                        ),
+                        painter = rememberAsyncImagePainter(url),
                         contentDescription = place.name,
                         modifier = Modifier
                             .clip(
@@ -279,26 +621,30 @@ fun BottomSheetContent(place: Place, context: Context) {
             }
         }
 
-        Text(text = place.description, modifier = Modifier.padding(bottom = 10.dp))
         Text(text = "Đánh giá của khách thăm quan", style = MaterialTheme.typography.titleMedium)
-        if(place.reviews != null) {
-            LazyRow(
-                modifier = Modifier.padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(place.reviews) { review ->
-                    ReviewCard(review)
-                }
+        LazyRow(
+            modifier = Modifier.padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(reviews) { review ->
+                ReviewCard(review)
             }
-        }
-        else {
-            Text(text = "Không có bài đánh giá nào")
         }
 
         Spacer(modifier = Modifier.height(8.dp))
         Box(modifier = Modifier.fillMaxWidth()) {
             Chip(
-                onClick = { showDialog = true },
+                onClick =
+                {
+                    if(authState.value is AuthState.Unauthenticated) {
+                        val intent = Intent(context, MainActivity::class.java)
+                        intent.putExtra("screen", "login")
+                        context.startActivity(intent)
+                    }
+                    else {
+                        showDialog = true
+                    }
+                },
                 label = {
                     Text(text = "Viết bài đánh giá")
                 },
@@ -322,41 +668,41 @@ fun BottomSheetContent(place: Place, context: Context) {
                 showDialog = showDialog,
                 onDismiss = { showDialog = false },
                 onSubmit = { stars, commentText ->
+                    val review: MutableMap<String, Any> = HashMap()
+
+                    review["username"] = userInfo.name.ifEmpty { userInfo.email }
+                    review["comment"] = commentText
+                    review["rating"] = stars
+
+                    contributedPlaceCollection.document(place.id).get()
+                        .addOnSuccessListener {
+                            contributedPlaceCollection.document(place.id)
+                                .update("reviews", FieldValue.arrayUnion(review))
+                                .addOnSuccessListener {
+                                    reviews = listOf(Review(review["username"].toString(), review["comment"].toString(), review["rating"].toString().toInt() )) + reviews
+                                    println("add review success")
+                                }
+                        }
+
                     selectedStars = stars
                     comment = commentText
-
-                    val review = Review("username111", comment, stars)
-                    place.reviews?.add(0, review)
 
                     println("Stars: $stars, Comment: $commentText")
                 }
             )
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-        Text(text = "Gợi ý địa điểm", style = MaterialTheme.typography.titleMedium)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            place.suggestions?.forEach { suggestion ->
-                SuggestionItem(suggestion)
-            }
         }
     }
 }
 
 @SuppressLint("DiscouragedApi")
 @Composable
-fun SuggestionItem(suggestion: Suggestion) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        val context = LocalContext.current
-
-        Image(
-            painter = painterResource(id = context.resources.getIdentifier(suggestion.icon, "drawable", context.packageName)),
-            contentDescription = suggestion.title,
-            modifier = Modifier.size(40.dp)
-        )
-        Column(modifier = Modifier.padding(start = 8.dp)) {
-            Text(text = suggestion.title, style = MaterialTheme.typography.titleMedium)
-            Text(text = suggestion.description, style = MaterialTheme.typography.bodyMedium)
+fun SuggestionItem(place: PlacesCoreData) {
+    Column {
+        place.name?.let { Text(text = it, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
+        place.location?.formattedAddress.let {
+            if (it != null) {
+                Text(text = it)
+            }
         }
     }
 }
@@ -372,7 +718,7 @@ fun ReviewCard(review: Review) {
             modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = review.name, style = MaterialTheme.typography.titleMedium)
+            Text(text = review.username, style = MaterialTheme.typography.titleMedium)
             Text(text = review.comment, maxLines = 2, style = MaterialTheme.typography.bodyMedium)
             RatingBar(rating = review.rating)
         }
@@ -399,17 +745,82 @@ fun RatingBar(rating: Int) {
     }
 }
 
-@SuppressLint("MutableCollectionMutableState")
-@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("MutableCollectionMutableState", "PermissionLaunchedDuringComposition")
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun MapScreen(context: Context) {
-    var clickedPlace by remember { mutableStateOf(Place(latLng = LatLng(21.0278, 105.8342))) }
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(clickedPlace.latLng, 15f)
+fun MapScreen(context: Context, authViewModel: AuthViewModel) {
+    var placesApi by remember {
+        mutableStateOf(emptyList<PlacesCoreData>())
+    }
+    var categories by remember {
+        mutableStateOf(mutableSetOf<String>())
+    }
+    var contributedPlaces by remember {
+        mutableStateOf(emptyList<ContributedPlace>())
+    }
+
+    LaunchedEffect(Unit) {
+        val db = FirebaseFirestore.getInstance()
+        val contributionsCollection = db.collection("Contributions")
+
+        contributionsCollection.get().addOnSuccessListener { it ->
+            if (!it.isEmpty) {
+                contributedPlaces = it.documents.mapNotNull { document ->
+                    val contribution = document.toObject(ContributedPlace::class.java)
+                    contribution?.let { it.id = document.id  }
+                    contribution
+                }
+            }
+        }
+    }
+
+    val authState = authViewModel.authState.observeAsState()
+    val userInfoState = authViewModel.userInfo.observeAsState(UserInfo())
+    val userInfo = userInfoState.value
+
+    LaunchedEffect(Unit) {
+        authViewModel.resetState() // Ensures state is reset only once when the screen loads
+    }
+
+    val fusedLocationProviderClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
+
+    var clickedPlace by remember { mutableStateOf(PlacesCoreData(fsqId = "")) }
+    var clickedContributedPlace by remember { mutableStateOf(ContributedPlace()) }
+    val cameraPositionState = rememberCameraPositionState()
+    val locationPermissionState = rememberPermissionState(permission = Manifest.permission.ACCESS_FINE_LOCATION)
+
+    LaunchedEffect(Unit) {
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
+                location?.let { it ->
+                    println("user location ${it.latitude} - ${it.longitude}")
+                    cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(it.latitude, it.longitude), 15f)
+                    DataProvider.getPlaces(LatLng(it.latitude, it.longitude), 100000) { it ->
+                        placesApi = it
+                        val categoriesTmp: MutableSet<String> = mutableSetOf()
+                        it.forEach {
+                            categoriesTmp.add(it.categories[0].name)
+                        }
+                        categories = categoriesTmp
+                    }
+                }
+            }
+        } else {
+            locationPermissionState.launchPermissionRequest()
+        }
     }
 
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
+
+    var contributedPlaceSheetState = rememberModalBottomSheetState()
+    var showContributedPlaceBottomSheet by remember { mutableStateOf(false) }
 
     if(showBottomSheet) {
         ModalBottomSheet(
@@ -418,29 +829,73 @@ fun MapScreen(context: Context) {
                 showBottomSheet = false
             },
         ) {
-            BottomSheetContent(clickedPlace, context)
+            BottomSheetContent(clickedPlace, context, authViewModel)
+        }
+    }
+
+    if(showContributedPlaceBottomSheet) {
+        ModalBottomSheet(
+            sheetState = contributedPlaceSheetState,
+            onDismissRequest = {
+                showContributedPlaceBottomSheet = false
+            },
+        ) {
+            BottomSheetContentForContributedPlace(clickedContributedPlace, context, authViewModel)
         }
     }
 
     var searchQuery by remember { mutableStateOf("") }
-    var searchedPlaces by remember { mutableStateOf(places) }
+    var searchedPlaces by remember { mutableStateOf(emptyList<PlacesCoreData>()) }
     var isSearchBarActive by remember { mutableStateOf(false) }
 
     var selectedType by remember { mutableStateOf("") }
+
+    LaunchedEffect(placesApi) {
+        placesApiGlobal = placesApi
+        searchedPlaces = placesApi
+    }
+
+    LaunchedEffect(categories) {
+        categoriesGlobal = categories
+    }
+
 
     Box(Modifier.fillMaxSize()) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
+            properties = MapProperties(isMyLocationEnabled = true)
         ) {
+            val urls = placesApi.map { "${it.categories[0].icon.prefix}120${it.categories[0].icon.suffix}" }
+            val markerIcons = rememberMarkerIcons(urls, backgroundColor = 0xFF2061C3.toInt())
+
             for(place in searchedPlaces) {
+                val iconUrl = "${place.categories[0].icon.prefix}120${place.categories[0].icon.suffix}"
+                val customIcon = markerIcons[iconUrl]
+
+                println("Google map - ${place.geocodes!!.main.latitude}-${ place.geocodes.main.longitude} - ${iconUrl}")
                 Marker(
-                    state = MarkerState(position = place.latLng),
+                    state = MarkerState(position = LatLng(place.geocodes.main.latitude, place.geocodes.main.longitude)),
                     title = place.name,
-                    icon = BitmapDescriptorFactory.fromResource(markerOf(place.category)),
+                    icon = customIcon,
                     onClick = {
                         showBottomSheet = true
+                        showContributedPlaceBottomSheet = false
                         clickedPlace = place
+                        true
+                    }
+                )
+            }
+
+            for(place in contributedPlaces) {
+                Marker(
+                    state = MarkerState(position = LatLng(place.location.latitude, place.location.longitude)),
+                    title = place.name,
+                    icon = BitmapDescriptorFactory.fromResource(R.drawable.ic_map_marker),
+                    onClick = {
+                        showBottomSheet = false
+                        showContributedPlaceBottomSheet = true
+                        clickedContributedPlace = place
                         true
                     }
                 )
@@ -459,12 +914,12 @@ fun MapScreen(context: Context) {
                         onQueryChange = {
                                 str -> run {
                             searchQuery = str
-                            searchedPlaces = searchLocation(searchQuery, searchQuery)
+                            searchedPlaces = searchLocation(searchQuery, searchQuery, placesApi)
                         } },
                         onSearch = {
                                 str -> run {
                             isSearchBarActive = false
-                            searchedPlaces = searchLocation(searchQuery, selectedType)
+                            searchedPlaces = searchLocation(searchQuery, selectedType, placesApi)
                         }
                         },
                         active = isSearchBarActive,
@@ -500,7 +955,10 @@ fun MapScreen(context: Context) {
                                         cameraPositionState.move(
                                             CameraUpdateFactory.newCameraPosition(
                                                 CameraPosition.fromLatLngZoom(
-                                                    clickedPlace.latLng,
+                                                    LatLng(
+                                                        clickedPlace.geocodes!!.main.latitude,
+                                                        clickedPlace.geocodes!!.main.longitude
+                                                    ),
                                                     15f
                                                 )
                                             )
@@ -508,7 +966,7 @@ fun MapScreen(context: Context) {
                                         isSearchBarActive = false
                                     })
                                 ) {
-                                    Text(text = place.name)
+                                    place.name?.let { Text(text = it) }
                                 }
                             }
                             }
@@ -518,23 +976,33 @@ fun MapScreen(context: Context) {
             }
 
             FilterChips(
+                categories = categories,
                 selectedType = selectedType,
                 onTypeSelected = {
-                    if(selectedType == it) {
-                        selectedType = ""
-                    }
-                    else {
-                        selectedType = it
+                    selectedType = if(selectedType == it) {
+                        ""
+                    } else {
+                        it
                     }
 
-                    searchedPlaces = searchLocation(searchQuery, selectedType)
+                    searchedPlaces = searchLocation(searchQuery, selectedType, placesApi)
                 }
             )
 
             Box(modifier = Modifier.fillMaxSize()) {
                 FloatingActionButton(
                     onClick = {
-                        val intent = Intent(context, ContributeActivity::class.java)
+                        val intent: Intent
+
+                        if(authState.value is AuthState.Unauthenticated) {
+                            intent = Intent(context, MainActivity::class.java)
+                            intent.putExtra("screen", "login")
+                        }
+                        else {
+                            intent = Intent(context, ContributeActivity::class.java)
+                            intent.putExtra("user", userInfo.email )
+                        }
+
                         context.startActivity(intent)
                     },
                     shape = RoundedCornerShape(16.dp),
@@ -711,67 +1179,111 @@ fun ShareOption(label: String, onClick: () -> Unit) {
     }
 }
 
-@Serializable
-data class Review(val name: String, val comment: String, val rating: Int)
-@Serializable
-data class Suggestion(val title: String, val description: String, val icon: String)
-@Serializable
-data class Place(
-    var name: String = "",
-    @Serializable(with = LatLngSerializer::class) var latLng: LatLng = LatLng(0.0, 0.0),
-    val reviews: MutableList<Review>? = null,
-    val suggestions: MutableList<Suggestion>? = null,
-    val images: MutableList<String>? = null,
-    var category: String = "",
-    var description: String = "",
-    var address: String = ""
-)
+@Composable
+fun rememberMarkerIcons(urls: List<String>, backgroundColor: Int, padding: Int = 0): Map<String, BitmapDescriptor?> {
+    val context = LocalContext.current
+    var icons by remember { mutableStateOf<Map<String, BitmapDescriptor?>>(emptyMap()) }
 
-// Custom serializer for Google Maps LatLng
-@Serializer(forClass = LatLng::class)
-object LatLngSerializer : KSerializer<LatLng> {
-    override val descriptor: SerialDescriptor =
-        buildClassSerialDescriptor("LatLng") {
-            element<Double>("latitude")
-            element<Double>("longitude")
-        }
-
-    override fun serialize(encoder: Encoder, value: LatLng) {
-        val compositeEncoder = encoder.beginStructure(descriptor)
-        compositeEncoder.encodeDoubleElement(descriptor, 0, value.latitude)
-        compositeEncoder.encodeDoubleElement(descriptor, 1, value.longitude)
-        compositeEncoder.endStructure(descriptor)
+    LaunchedEffect(urls) {
+        icons = urls.associateWith { loadBitmapDescriptorFromUrlWithBackground(context, it, backgroundColor, padding) }
     }
 
-    override fun deserialize(decoder: Decoder): LatLng {
-        val compositeDecoder = decoder.beginStructure(descriptor)
-        var latitude = 0.0
-        var longitude = 0.0
-        loop@ while (true) {
-            when (val index = compositeDecoder.decodeElementIndex(descriptor)) {
-                0 -> latitude = compositeDecoder.decodeDoubleElement(descriptor, 0)
-                1 -> longitude = compositeDecoder.decodeDoubleElement(descriptor, 1)
-                CompositeDecoder.DECODE_DONE -> break@loop
-                else -> throw SerializationException("Unexpected index: $index")
+    return icons
+}
+
+@Composable
+fun rememberPlaceImages(urls: List<String>, backgroundColor: Int, padding: Int = 0): Map<String, ImageBitmap?> {
+    val context = LocalContext.current
+    var images by remember { mutableStateOf<Map<String, ImageBitmap?>>(emptyMap()) }
+
+    LaunchedEffect(urls) {
+        images = urls.associateWith { loadBitmapImageFromUrlWithBackground(context, it, backgroundColor, padding) }
+    }
+
+    return images
+}
+suspend fun loadBitmapImageFromUrlWithBackground(
+    context: Context,
+    url: String,
+    backgroundColor: Int,
+    padding: Int = 0
+): ImageBitmap? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val loader = ImageLoader(context)
+            val request = ImageRequest.Builder(context)
+                .data(url)
+                .allowHardware(false) // Disable hardware bitmaps.
+                .build()
+
+            val result = loader.execute(request)
+            if (result is SuccessResult) {
+                val originalBitmap = (result.drawable).toBitmap()
+                // Thêm màu nền cho bitmap
+                val bitmapWithBackground = fillBitmapBackgroundWithPadding(originalBitmap, backgroundColor, padding)
+                bitmapWithBackground.asImageBitmap()
+            } else {
+                null
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
-        compositeDecoder.endStructure(descriptor)
-        return LatLng(latitude, longitude)
     }
 }
 
-fun loadPlacesFromRaw(): MutableList<Place> {
-    return try {
-        // Read JSON file as a string
-        val inputStream = MainActivity.getAppResources().openRawResource(R.raw.places)
-        val json = inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+suspend fun loadBitmapDescriptorFromUrlWithBackground(
+    context: Context,
+    url: String,
+    backgroundColor: Int,
+    padding: Int = 0
+): BitmapDescriptor? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val loader = ImageLoader(context)
+            val request = ImageRequest.Builder(context)
+                .data(url)
+                .allowHardware(false) // Disable hardware bitmaps.
+                .build()
 
-        println(json)
-
-        // Deserialize JSON into a list of Place objects
-        Json.decodeFromString<MutableList<Place>>(json)
-    } catch (e: Exception) {
-        Log.e("LoadPlaces", "Error loading places: ${e.message}")
-        mutableListOf<Place>()
+            val result = loader.execute(request)
+            if (result is SuccessResult) {
+                val originalBitmap = (result.drawable).toBitmap()
+                // Thêm màu nền cho bitmap
+                val bitmapWithBackground = fillBitmapBackgroundWithPadding(originalBitmap, backgroundColor, padding)
+                BitmapDescriptorFactory.fromBitmap(bitmapWithBackground)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 }
+
+fun fillBitmapBackgroundWithPadding(bitmap: Bitmap, color: Int, padding: Int): Bitmap {
+    val newWidth = bitmap.width + 2 * padding
+    val newHeight = bitmap.height + 2 * padding
+
+    val newBitmap = Bitmap.createBitmap(newWidth, newHeight, bitmap.config ?: Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(newBitmap)
+
+    // Draw the background with rounded corners
+    val rect = RectF(0f, 0f, newWidth.toFloat(), newHeight.toFloat())
+    val path = Path().apply {
+        addRoundRect(rect, 20F, 20F, Path.Direction.CW)
+    }
+
+    // Clip the canvas to rounded corners
+    canvas.clipPath(path)
+
+    // Vẽ màu nền
+    canvas.drawColor(color)
+
+    // Vẽ bitmap gốc lên canvas, với padding
+    canvas.drawBitmap(bitmap, padding.toFloat(), padding.toFloat(), null)
+
+    return newBitmap
+}
+

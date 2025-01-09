@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -21,6 +24,16 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            FileInputStream(localPropertiesFile).use { localProperties.load(it) }
+        }
+
+        fun getLocalProperty(key: String): String? = localProperties.getProperty(key)
+
+        buildConfigField("String", "PLACES_API_KEY", "\"${getLocalProperty("PLACES_API_KEY")}\"")
     }
 
     buildTypes {
@@ -41,6 +54,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
@@ -63,7 +77,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material)
     implementation(libs.firebase.auth)
-    implementation("com.google.firebase:firebase-firestore-ktx:25.1.0")
+    implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.storage.ktx)
     implementation(libs.firebase.auth.v2211) // Use the latest version
 
@@ -82,10 +96,8 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.coil.compose)
     //handle picture
-    implementation(libs.coil.compose.v222)
-
-
     implementation(libs.kotlinx.serialization.json.v163)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.runtime.livedata)
+    implementation(libs.okhttp)
 }

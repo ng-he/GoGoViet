@@ -37,29 +37,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.example.gogoviet.ui.theme.*
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.gogoviet.data.DataProvider
+import com.example.gogoviet.data.models.PlacesCoreData
 import com.example.gogoviet.login.login
 import com.example.gogoviet.login.signup
 import userUpdate
 import com.example.gogoviet.ui.theme.GoGoVietTheme
 import com.example.gogoviet.ui.theme.Poppins
+import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.coroutineScope
+
 
 class MainActivity : ComponentActivity() {
     companion object {
-        lateinit var ínstance: MainActivity
-        fun getAppResources(): Resources = ínstance.resources
+        lateinit var instance: MainActivity
+        fun getAppResources(): Resources = instance.resources
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        ínstance = this
+        instance = this
         var startDestination = "home"
 
         if(intent.getStringExtra("screen") != null) {
@@ -88,10 +92,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController, context: Context, startDestination: String,modifier: Modifier = Modifier, authViewModel: AuthViewModel) {
+fun NavigationHost(
+    navController: NavHostController,
+    context: Context, startDestination: String,
+    modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel
+) {
     NavHost(navController, startDestination = startDestination, modifier = modifier) {
         composable("home") { HomeScreen() }
-        composable("explore") { ExploreScreen(context) }
+        composable("explore") { ExploreScreen(context, authViewModel) }
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
         composable("account") { AccountScreen(modifier, navController,authViewModel) }
