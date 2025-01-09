@@ -1,6 +1,5 @@
 package com.example.gogoviet
 
-
 import android.content.Context
 import android.content.res.Resources
 import android.os.Bundle
@@ -44,6 +43,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+//import com.example.gogoviet.ui.foryou.ForYouVideoScreen
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.CameraPosition
 import com.example.gogoviet.data.DataProvider
 import com.example.gogoviet.data.models.PlacesCoreData
 import com.example.gogoviet.login.login
@@ -55,6 +57,16 @@ import userUpdate
 import com.example.gogoviet.ui.theme.GoGoVietTheme
 import com.example.gogoviet.ui.theme.Poppins
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapType
+import com.google.maps.android.compose.MapUiSettings
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 import kotlinx.coroutines.coroutineScope
 
 

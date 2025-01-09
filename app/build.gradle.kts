@@ -1,9 +1,14 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0"
     alias(libs.plugins.google.gms.google.services)
+    id ("kotlin-kapt")
+    id ("com.google.dagger.hilt.android")
 }
 
 android {
@@ -78,6 +83,7 @@ dependencies {
     implementation(libs.firebase.storage.ktx)
     implementation(libs.androidx.material.icons.core.android)
     implementation(libs.firebase.auth.v2211) // Use the latest version
+    implementation(libs.androidx.storage)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -92,9 +98,36 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.accompanist.permissions)
     implementation(libs.coil.compose)
+
+    implementation ("androidx.constraintlayout:constraintlayout-compose:1.0.1")
+
+    implementation ("androidx.compose.material:material:1.4.1")
+
+
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0-alpha01")
+//    implementation ("com.google.accompanist:accompanist-pager:0.28.0")
+    implementation ("androidx.compose.foundation:foundation-layout:1.4.1")  // Thêm để sử dụng Pager
+    implementation ("androidx.compose.foundation:foundation:1.4.1") // Thêm để sử dụng các thành phần cơ bản trong Compose
+
+    // Phiên bản mới nhất của VerticalPager
+//    implementation(libs.hilt.android)
+    implementation ("com.google.dagger:hilt-android:2.54")
+    kapt ("com.google.dagger:hilt-compiler:2.54")
+    implementation ("androidx.media3:media3-exoplayer:1.0.0")
+    implementation ("androidx.media3:media3-exoplayer-dash:1.0.0")
+    implementation ("androidx.media3:media3-ui:1.0.0")
+    implementation ("androidx.media3:media3-exoplayer-hls:1.0.0")
+
+//
+
+
     //handle picture
     implementation(libs.kotlinx.serialization.json.v163)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.okhttp)
+}
+//
+kapt {
+    correctErrorTypes = true
 }
