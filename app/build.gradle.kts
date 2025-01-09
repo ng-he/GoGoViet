@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    id ("kotlin-kapt")
+    id ("com.google.dagger.hilt.android")
+
 }
 
 android {
@@ -60,6 +63,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material)
+    implementation(libs.androidx.storage)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -74,4 +78,31 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.accompanist.permissions)
     implementation(libs.coil.compose)
+
+    implementation ("androidx.constraintlayout:constraintlayout-compose:1.0.1")
+
+    implementation ("androidx.compose.material:material:1.4.1")
+
+
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0-alpha01")
+//    implementation ("com.google.accompanist:accompanist-pager:0.28.0")
+    implementation ("androidx.compose.foundation:foundation-layout:1.4.1")  // Thêm để sử dụng Pager
+    implementation ("androidx.compose.foundation:foundation:1.4.1") // Thêm để sử dụng các thành phần cơ bản trong Compose
+
+    // Phiên bản mới nhất của VerticalPager
+//    implementation(libs.hilt.android)
+    implementation ("com.google.dagger:hilt-android:2.54")
+    kapt ("com.google.dagger:hilt-compiler:2.54")
+    implementation ("androidx.media3:media3-exoplayer:1.0.0")
+    implementation ("androidx.media3:media3-exoplayer-dash:1.0.0")
+    implementation ("androidx.media3:media3-ui:1.0.0")
+    implementation ("androidx.media3:media3-exoplayer-hls:1.0.0")
+
+//
+
+
+}
+//
+kapt {
+    correctErrorTypes = true
 }

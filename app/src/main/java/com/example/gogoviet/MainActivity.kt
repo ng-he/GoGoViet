@@ -60,6 +60,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+//import com.example.gogoviet.ui.foryou.ForYouVideoScreen
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -70,6 +71,9 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,7 +111,7 @@ fun NavigationHost(navController: NavHostController, context: Context, startDest
         composable("explore") { ExploreScreen(context) }
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
-        composable("account") { AccountScreen() }
+        composable("account") { AccountScreen(Modifier) }
     }
 }
 
