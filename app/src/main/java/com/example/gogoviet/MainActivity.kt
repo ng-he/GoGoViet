@@ -1,5 +1,6 @@
 package com.example.gogoviet
 
+import kotlinx.coroutines.coroutineScope
 import android.content.Context
 import android.content.res.Resources
 import android.os.Bundle
@@ -7,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.media3.common.util.UnstableApi
 import com.example.gogoviet.ui.theme.*
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -52,8 +55,6 @@ import com.example.gogoviet.login.login
 import com.example.gogoviet.login.signup
 import com.example.gogoviet.login.userUpdate
 import com.example.s2travel.HomeScreen
-
-import userUpdate
 import com.example.gogoviet.ui.theme.GoGoVietTheme
 import com.example.gogoviet.ui.theme.Poppins
 import com.google.android.gms.maps.model.LatLng
@@ -66,10 +67,8 @@ import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 import dagger.hilt.android.AndroidEntryPoint
 
+
 @AndroidEntryPoint
-import kotlinx.coroutines.coroutineScope
-
-
 class MainActivity : ComponentActivity() {
     companion object {
         lateinit var instance: MainActivity
@@ -108,6 +107,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 fun NavigationHost(
     navController: NavHostController,
