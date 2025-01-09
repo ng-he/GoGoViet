@@ -1,5 +1,6 @@
 package com.example.gogoviet
 
+import android.content.Context
 import android.graphics.drawable.Icon
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -19,11 +20,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.sharp.Home
+import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,25 +55,49 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.gogoviet.ui.theme.*
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+//import com.example.gogoviet.ui.foryou.ForYouVideoScreen
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapType
+import com.google.maps.android.compose.MapUiSettings
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        var startDestination = "home"
+
+        if(intent.getStringExtra("screen") != null) {
+            startDestination = intent.getStringExtra("screen")!!
+        }
+
         enableEdgeToEdge()
         setContent {
-
             GoGoVietTheme {
                 val navController = rememberNavController()
                 Scaffold (
                     bottomBar = { Menu(navController) },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    innerPadding -> NavigationHost(navController, Modifier.padding(innerPadding))
+                    innerPadding -> NavigationHost(
+                        navController,
+                        this,
+                        startDestination,
+                        Modifier.padding(innerPadding))
                 }
             }
         }
@@ -77,39 +105,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController, modifier: Modifier = Modifier) {
-    NavHost(navController, startDestination = "home", modifier = modifier) {
+fun NavigationHost(navController: NavHostController, context: Context, startDestination: String,modifier: Modifier = Modifier) {
+    NavHost(navController, startDestination = startDestination, modifier = modifier) {
         composable("home") { HomeScreen() }
-        composable("explore") { ExploreScreen() }
+        composable("explore") { ExploreScreen(context) }
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
-        composable("account") { AccountScreen() }
+        composable("account") { AccountScreen(Modifier) }
     }
-}
-
-@Composable
-fun HomeScreen() {
-    ScreenContent("Home Screen")
-}
-
-@Composable
-fun ExploreScreen() {
-    ScreenContent("Explore Screen")
-}
-
-@Composable
-fun VideoScreen() {
-    ScreenContent("Video Screen")
-}
-
-@Composable
-fun SavedScreen() {
-    ScreenContent("Saved Screen")
-}
-
-@Composable
-fun AccountScreen() {
-    ScreenContent("Account Screen")
 }
 
 @Composable
