@@ -1,5 +1,6 @@
 package com.example.gogoviet
 
+
 import android.content.Context
 import android.content.res.Resources
 import android.os.Bundle
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.gogoviet.ui.theme.*
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -46,6 +48,9 @@ import com.example.gogoviet.data.DataProvider
 import com.example.gogoviet.data.models.PlacesCoreData
 import com.example.gogoviet.login.login
 import com.example.gogoviet.login.signup
+import com.example.gogoviet.login.userUpdate
+import com.example.s2travel.HomeScreen
+
 import userUpdate
 import com.example.gogoviet.ui.theme.GoGoVietTheme
 import com.example.gogoviet.ui.theme.Poppins
@@ -99,12 +104,12 @@ fun NavigationHost(
     authViewModel: AuthViewModel
 ) {
     NavHost(navController, startDestination = startDestination, modifier = modifier) {
-        composable("home") { HomeScreen() }
+        composable("home") { HomeScreen(modifier) }
         composable("explore") { ExploreScreen(context, authViewModel) }
         composable("video") { VideoScreen() }
         composable("saved") { SavedScreen() }
         composable("account") { AccountScreen(modifier, navController,authViewModel) }
-        composable("login") { login(modifier, navController,authViewModel)}
+        composable("login") { login(modifier, navController,authViewModel) }
         composable("signup") { signup(modifier, navController,authViewModel) }
         composable("updateProfile") { userUpdate(modifier, navController,authViewModel) }
     }
