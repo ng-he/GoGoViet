@@ -297,12 +297,6 @@ fun authedscreen(modifier: Modifier = Modifier, navController: NavController,use
             )
         }
 
-
-
-
-
-
-
         // Other Sections
         val sections = listOf(
             Triple(R.drawable.solarticketsalelinear, "Mã giảm giá", null),

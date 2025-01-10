@@ -6,16 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,7 +73,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
@@ -109,9 +104,7 @@ import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.firebase.Firebase
 import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -120,21 +113,8 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.Serializer
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.descriptors.element
-import kotlinx.serialization.encoding.CompositeDecoder
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
-import java.lang.reflect.TypeVariable
 import kotlin.collections.HashMap
 
 
@@ -282,7 +262,22 @@ fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: A
                         context.startActivity(intent)
                     }
                     else {
-                        Toast.makeText(context, "Đã lưu địa điểm", Toast.LENGTH_LONG).show()
+                        val userCollection = db.collection("users")
+                        val savedPlaces: MutableMap<String, Any> = HashMap()
+
+                        savedPlaces["name"] = place.name!!
+                        savedPlaces["address"] = place.location!!.formattedAddress!!
+                        savedPlaces["location"] = mapOf(
+                            "latiude" to place.geocodes!!.main.latitude,
+                            "longtiude" to place.geocodes.main.longitude
+                        )
+
+                        userCollection.document(authViewModel.userInfo.value!!.uid)
+                            .update("saved_places", FieldValue.arrayUnion(savedPlaces))
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "Đã lưu địa điểm", Toast.LENGTH_LONG).show()
+                                return@addOnSuccessListener
+                            }
                     }
                 },
                 label = {
@@ -541,7 +536,22 @@ fun BottomSheetContentForContributedPlace(place: ContributedPlace, context: Cont
                         context.startActivity(intent)
                     }
                     else {
-                        Toast.makeText(context, "Đã lưu địa điểm", Toast.LENGTH_LONG).show()
+                        val userCollection = db.collection("users")
+                        val savedPlaces: MutableMap<String, Any> = HashMap()
+
+                        savedPlaces["name"] = place.name
+                        savedPlaces["address"] = place.address
+                        savedPlaces["location"] = mapOf(
+                            "latiude" to place.location.latitude,
+                            "longtiude" to place.location.longitude
+                        )
+
+                        userCollection.document(authViewModel.userInfo.value!!.uid)
+                            .update("saved_places", FieldValue.arrayUnion(savedPlaces))
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "Đã lưu địa điểm", Toast.LENGTH_LONG).show()
+                                return@addOnSuccessListener
+                            }
                     }
                 },
                 label = {
@@ -800,7 +810,19 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
             fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
                 location?.let { it ->
                     println("user location ${it.latitude} - ${it.longitude}")
-                    cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(it.latitude, it.longitude), 15f)
+
+                    if(savedClickedPlaceLocation != null) {
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                            savedClickedPlaceLocation!!, 15f)
+
+                        println(savedClickedPlaceLocation!!.latitude)
+                        savedClickedPlaceLocation = null
+                    }
+                    else {
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                            LatLng(it.latitude, it.longitude), 15f)
+                    }
+
                     DataProvider.getPlaces(LatLng(it.latitude, it.longitude), 100000) { it ->
                         placesApi = it
                         val categoriesTmp: MutableSet<String> = mutableSetOf()
@@ -907,31 +929,39 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .semantics { isTraversalGroup = true }
-            ){
-                Surface (color = if(isSearchBarActive) Color.White else Color.Transparent) {
+            ) {
+                Surface(color = if (isSearchBarActive) Color.White else Color.Transparent) {
                     SearchBar(
                         query = searchQuery,
-                        onQueryChange = {
-                                str -> run {
-                            searchQuery = str
-                            searchedPlaces = searchLocation(searchQuery, searchQuery, placesApi)
-                        } },
-                        onSearch = {
-                                str -> run {
-                            isSearchBarActive = false
-                            searchedPlaces = searchLocation(searchQuery, selectedType, placesApi)
-                        }
+                        onQueryChange = { str ->
+                            run {
+                                searchQuery = str
+                                searchedPlaces = searchLocation(searchQuery, searchQuery, placesApi)
+                            }
+                        },
+                        onSearch = { str ->
+                            run {
+                                isSearchBarActive = false
+                                searchedPlaces =
+                                    searchLocation(searchQuery, selectedType, placesApi)
+                            }
                         },
                         active = isSearchBarActive,
                         onActiveChange = { isSearchBarActive = it },
                         placeholder = { Text("Tìm kiếm địa điểm...") },
                         leadingIcon = {
-                            Icon(imageVector = Icons.Default.Search, contentDescription = "Search Icon")
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search Icon"
+                            )
                         },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear")
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Clear"
+                                    )
                                 }
                             }
                         },
@@ -946,29 +976,30 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
                         colors = SearchBarDefaults.colors(containerColor = Color.White)
                     ) {
                         Column {
-                            searchedPlaces.forEach {
-                                    place -> run {
-                                Box(modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(onClick = {
-                                        clickedPlace = place
-                                        cameraPositionState.move(
-                                            CameraUpdateFactory.newCameraPosition(
-                                                CameraPosition.fromLatLngZoom(
-                                                    LatLng(
-                                                        clickedPlace.geocodes!!.main.latitude,
-                                                        clickedPlace.geocodes!!.main.longitude
-                                                    ),
-                                                    15f
+                            searchedPlaces.forEach { place ->
+                                run {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(onClick = {
+                                                clickedPlace = place
+                                                cameraPositionState.move(
+                                                    CameraUpdateFactory.newCameraPosition(
+                                                        CameraPosition.fromLatLngZoom(
+                                                            LatLng(
+                                                                clickedPlace.geocodes!!.main.latitude,
+                                                                clickedPlace.geocodes!!.main.longitude
+                                                            ),
+                                                            15f
+                                                        )
+                                                    )
                                                 )
-                                            )
-                                        )
-                                        isSearchBarActive = false
-                                    })
-                                ) {
-                                    place.name?.let { Text(text = it) }
+                                                isSearchBarActive = false
+                                            })
+                                    ) {
+                                        place.name?.let { Text(text = it) }
+                                    }
                                 }
-                            }
                             }
                         }
                     }

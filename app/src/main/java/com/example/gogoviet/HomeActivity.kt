@@ -18,6 +18,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import com.example.gogoviet.R
 import kotlinx.coroutines.delay
@@ -55,6 +56,7 @@ private fun HomeContent() {
     HotelDeals()
 }
 
+@Preview
 @Composable
 fun SearchBarWithNotification(modifier: Modifier = Modifier) {
     var searchText by remember { mutableStateOf("") }
@@ -73,6 +75,7 @@ fun SearchBarWithNotification(modifier: Modifier = Modifier) {
             contentDescription = "Search Icon",
             tint = Color.Gray,
             modifier = Modifier.size(24.dp)
+                .padding(start = 10.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
         BasicTextField(

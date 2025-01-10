@@ -119,7 +119,7 @@ fun NavigationHost(
         composable("home") { HomeScreen(modifier) }
         composable("explore") { ExploreScreen(context, authViewModel) }
         composable("video") { VideoScreen() }
-        composable("saved") { SavedScreen() }
+        composable("saved") { SavedScreen(authViewModel, context, navController) }
         composable("account") { AccountScreen(modifier, navController,authViewModel) }
         composable("login") { login(modifier, navController,authViewModel) }
         composable("signup") { signup(modifier, navController,authViewModel) }

@@ -51,6 +51,8 @@ class AuthViewModel : ViewModel() {
                 if (task.isSuccessful){
                     _authState.value = AuthState.Authenticated
                     auth.currentUser?.let { fetchUserInfo(it.uid)}
+
+
                 }else{
                     _authState.value = AuthState.Error(task.exception?.message?:"Something went wrong")
             }
