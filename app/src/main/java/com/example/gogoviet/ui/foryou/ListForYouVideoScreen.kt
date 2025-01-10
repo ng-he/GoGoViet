@@ -9,7 +9,10 @@
     import androidx.compose.foundation.pager.rememberPagerState
     import androidx.compose.material3.Text
     import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.LaunchedEffect
     import androidx.compose.runtime.key
+    import androidx.compose.runtime.mutableStateOf
+    import androidx.compose.runtime.remember
     import androidx.compose.ui.Modifier
     import androidx.hilt.navigation.compose.hiltViewModel
     import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,64 +25,54 @@
     import dagger.hilt.android.lifecycle.HiltViewModel
 
 
-    //@OptIn(ExperimentalFoundationApi::class)
-    //@UnstableApi
-    //@Composable
-    //fun ListForYouVideoScreen(
-    //    modifier: Modifier = Modifier,
-    //    onShowComment: (Int) -> Unit
-    //) {
-    //    VerticalPager(state = rememberPagerState(initialPage = 0){10}, modifier = modifier) { videoId ->
-    //        val viewModel: videoViewModel = hiltViewModel(key = videoId.toString())
-    //        VideoDetailScreen(videoId = videoId, vieModel = viewModel, onShowComment = onShowComment)
-    //    }
-    //}
-
-
-    @OptIn(ExperimentalFoundationApi::class, UnstableApi::class)
-    @Composable
+    @OptIn(ExperimentalFoundationApi::class)
     @UnstableApi
+    @Composable
     fun ListForYouVideoScreen(
         modifier: Modifier = Modifier,
-        onShowComment: (Int) -> Unit,
-        viewModel: videoViewModel = hiltViewModel()
-
-    //    pageCount = videoId.size
+        onShowComment: (Int) -> Unit
     ) {
-
-    //    val pagerState = rememberPagerState(initialPage = 0){ pageCount = videoIds.size}
-        val videoIds = viewModel.videos
-        val pagerState = rememberPagerState(initialPage = 0){videoIds.size}
-
-        VerticalPager(
-            state = pagerState,
-    //        pageCount = videoIds.size, // Số lượng video
-            modifier = modifier.fillMaxSize()
-        ) { videoId ->
-//            val videoId = videoIds[page] // Lấy `videoId` từ danh sách theo `page`
+        VerticalPager(state = rememberPagerState(initialPage = 0){10}, modifier = modifier) { videoId ->
             val viewModel: videoViewModel = hiltViewModel(key = videoId.toString())
-
-//            val isVisible = pagerState.currentPage == page
-//
-//
-//
-//            if (isVisible) {
-//                viewModel.playVisibleVideo(videoId)
-//            } else {
-//                viewModel.pauseVideo()
-//            }
-//
-//            Text (
-//                text = "${videoId}.  ${pagerState.currentPage}   . $page"
-//
-//            )
-
-            VideoDetailScreen(
-                videoId = videoId,
-                vieModel = viewModel,
-                onShowComment = onShowComment
-            )
+            VideoDetailScreen(videoId = videoId, vieModel = viewModel, onShowComment = onShowComment)
         }
-
     }
+
+//
+//    @OptIn(ExperimentalFoundationApi::class, UnstableApi::class)
+//    @Composable
+//    @UnstableApi
+//    fun ListForYouVideoScreen(
+//        modifier: Modifier = Modifier,
+//        onShowComment: (Int) -> Unit,
+//        viewModel: videoViewModel = hiltViewModel()
+//
+//
+//    ) {
+//
+//        val videoIds = viewModel.videos
+//        val pagerState = rememberPagerState(initialPage = 0){videoIds.size}
+//        val currentVideoIndex = remember { mutableStateOf(0) }
+//        LaunchedEffect(pagerState.currentPage) {
+//            // Khi trang hiện tại thay đổi, phát video tương ứng
+//            viewModel.playVisibleVideo(videoIds[pagerState.currentPage])
+//        }
+//
+//        VerticalPager(
+//            state = pagerState,
+//            modifier = modifier.fillMaxSize()
+//        ) { videoId ->
+//
+//
+//            val viewModel: videoViewModel = hiltViewModel(key = videoId.toString())
+////            viewModel.playVisibleVideo(videoIds[pagerState.currentPage])
+//
+//            VideoDetailScreen(
+//                videoId = videoId,
+//                vieModel = viewModel,
+//                onShowComment = onShowComment
+//            )
+//        }
+//
+//    }
 

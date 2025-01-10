@@ -51,9 +51,9 @@ class videoViewModel @Inject constructor(
             is VideoDetailAction.ToggleVideo -> {
                 toggleVideoPlayer()
             }
-//            is VideoDetailAction.DisposeAction -> {
-////                onDispose()
-//            }
+            is VideoDetailAction.DisposeAction -> {
+                onDispose()
+            }
             else -> {
 
             }
@@ -63,18 +63,18 @@ class videoViewModel @Inject constructor(
 //    {
 //        return val video = videoRepository.getListvideo()
 //    }
-    fun handleAction(action: VideoDetailAction) {
-        when (action) {
-            is VideoDetailAction.LoadData -> {
-                val videoId = action.id
-                loadVideo(videoId = videoId)
-            }
-
-            is VideoDetailAction.ToggleVideo -> {
-                toggleVideoPlayer()
-            }
-        }
-    }
+//    fun handleAction(action: VideoDetailAction) {
+//        when (action) {
+//            is VideoDetailAction.LoadData -> {
+//                val videoId = action.id
+//                loadVideo(videoId = videoId)
+//            }
+//
+//            is VideoDetailAction.ToggleVideo -> {
+//                toggleVideoPlayer()
+//            }
+//        }
+//    }
     val videos = videoRepository.getListvideo()
     private fun loadVideo(videoId: Int) {
         _uiState.value = VideoDetailUiState.Loading
@@ -109,9 +109,10 @@ class videoViewModel @Inject constructor(
         if (currentPlayingVideoId != videoId) {
             pauseVideo() // Dừng video cũ trước khi phát video mới
             currentPlayingVideoId = videoId
-            loadVideo(videoId)
+            loadVideo(videoId) // Tải và phát video mới
         }
     }
+
 
 //    fun pauseVideo() {
 //        currentPlayingVideoId?.let { videoId ->
@@ -146,9 +147,10 @@ class videoViewModel @Inject constructor(
 //    }
 
 
-//    private fun onDispose() {
-//        player.release()
-//    }
+    private fun onDispose() {
+        player.release()
+//        currentPlayingVideoId = null // Reset trạng thái video đang phát
+    }
 
 
     override fun onCleared() {
@@ -177,5 +179,5 @@ sealed interface VideoDetailUiState {
 sealed class VideoDetailAction {
     data class LoadData(val id: Int): VideoDetailAction()
     object ToggleVideo: VideoDetailAction()
-//    object DisposeAction: VideoDetailAction()
+    object DisposeAction: VideoDetailAction()
 }

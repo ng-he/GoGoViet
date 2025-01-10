@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -33,14 +34,25 @@ fun VideoDetailScreen(
 
     if (uiState.value == VideoDetailUiState.Default) {
         // loading
-        vieModel.handleAction(VideoDetailAction.LoadData(videoId))
+        vieModel.processAction(VideoDetailAction.LoadData(videoId))
+    }
+    // Lắng nghe vòng đời của Composable
+    DisposableEffect(key1 = videoId.toString()) {
+        // Được gọi khi Composable được "mounted" (đưa vào giao diện)
+        onDispose {
+            // Gọi DisposeAction khi Composable bị "unmounted" (rời khỏi giao diện)
+            vieModel.processAction(VideoDetailAction.DisposeAction)
+        }
     }
 
-    VideoDetailScreen(uiState = uiState.value, player = vieModel.player, onShowComment = {
+    VideoDetailScreen(uiState = uiState.value,
+        player = vieModel.player,
+        onShowComment = {
         onShowComment(videoId)
-    }) { aciton ->
-        vieModel.handleAction(action = aciton)
-    }
+    },
+        processAction = { aciton ->
+        vieModel.processAction(action = aciton)
+    })
 }
 
 @UnstableApi
@@ -49,7 +61,7 @@ fun VideoDetailScreen(
     uiState: VideoDetailUiState,
     player: ExoPlayer,
     onShowComment: () -> Unit,
-    handleAction: (VideoDetailAction) -> Unit
+    processAction: (VideoDetailAction) -> Unit
 ) {
     when (uiState) {
         is VideoDetailUiState.Loading -> {
@@ -61,7 +73,7 @@ fun VideoDetailScreen(
         is VideoDetailUiState.Success -> {
             VideoDetailScreen(
                 player = player,
-                handleAction = handleAction,
+                processAction = processAction,
                 onShowComment = onShowComment
             )
         }
@@ -77,15 +89,16 @@ fun VideoDetailScreen(
 @Composable
 fun VideoDetailScreen(
     player: ExoPlayer,
-    handleAction: (VideoDetailAction) -> Unit,
+    processAction: (VideoDetailAction) -> Unit,
     onShowComment: () -> Unit
 ) {
     ConstraintLayout(modifier = Modifier
         .fillMaxSize()
         .clickable(
             onClick = {
-                handleAction(VideoDetailAction.ToggleVideo)
+                processAction(VideoDetailAction.ToggleVideo)
             }
+
         )) {
         val (videoPlayerView, sideBar, videoInfo) = createRefs()
         VideoPlayer(player = player, modifier = Modifier.constrainAs(videoPlayerView) {
