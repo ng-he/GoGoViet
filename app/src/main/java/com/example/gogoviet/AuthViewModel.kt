@@ -160,6 +160,21 @@ class AuthViewModel : ViewModel() {
         auth.signOut()
         _authState.value = AuthState.Unauthenticated
     }
+
+    fun forgotPassword(email: String) {
+        _authState.value = AuthState.Loading
+        auth.sendPasswordResetEmail(email)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Password reset email sent
+                    _authState.value = AuthState.ResetEmailSent
+                } else {
+                    // Handle error
+                    val errorMsg = task.exception?.message ?: "Unknown error"
+                    _authState.value = AuthState.Error(errorMsg)
+                }
+            }
+    }
 }
 
 
@@ -167,6 +182,7 @@ class AuthViewModel : ViewModel() {
 sealed class AuthState {
     object Authenticated : AuthState()
     object Unauthenticated : AuthState()
+    object ResetEmailSent : AuthState()
     object Loading : AuthState()
     data class Error(val message: String) : AuthState()
 }

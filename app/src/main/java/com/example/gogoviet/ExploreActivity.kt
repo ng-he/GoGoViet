@@ -4,10 +4,10 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Path
 import android.graphics.RectF
+import android.util.DisplayMetrics
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -67,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -82,7 +83,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.core.app.ActivityCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
@@ -97,6 +97,7 @@ import com.example.gogoviet.data.models.PlacesRichData
 import com.example.gogoviet.data.models.Review
 import com.example.gogoviet.ui.theme.Teal1
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -110,12 +111,14 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.collections.HashMap
+import kotlin.math.log2
+import kotlin.math.sqrt
 
 
 var placesApiGlobal = emptyList<PlacesCoreData>()
@@ -172,7 +175,7 @@ fun searchLocation(query: String, selectedType: String, placesApi: List<PlacesCo
 
 @SuppressLint("DiscouragedApi", "DefaultLocale")
 @Composable
-fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: AuthViewModel) {
+fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: AuthViewModel, onRoute: () -> Unit) {
     val db = FirebaseFirestore.getInstance()
     val placeCollection = db.collection("Places")
 
@@ -256,6 +259,28 @@ fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: A
         ) {
             Chip(
                 onClick = {
+                    onRoute()
+                },
+                label = {
+                    Text(text = "Đường đi")
+                },
+                modifier = Modifier
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
+                colors = ChipDefaults.chipColors(
+                    backgroundColor = Color(0x337F97FF),
+                    contentColor = Color.White
+                ),
+                icon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_route),
+                        contentDescription = ""
+                    )
+                }
+            )
+
+            Chip(
+                onClick = {
                     if(authState.value is AuthState.Unauthenticated) {
                         val intent = Intent(context, MainActivity::class.java)
                         intent.putExtra("screen", "login")
@@ -268,8 +293,8 @@ fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: A
                         savedPlaces["name"] = place.name!!
                         savedPlaces["address"] = place.location!!.formattedAddress!!
                         savedPlaces["location"] = mapOf(
-                            "latiude" to place.geocodes!!.main.latitude,
-                            "longtiude" to place.geocodes.main.longitude
+                            "latitude" to place.geocodes!!.main.latitude,
+                            "longitude" to place.geocodes.main.longitude
                         )
 
                         userCollection.document(authViewModel.userInfo.value!!.uid)
@@ -415,13 +440,19 @@ fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: A
                             if(it.exists()) {
                                 placeCollection.document(place.fsqId!!)
                                     .update("reviews", FieldValue.arrayUnion(review))
-                                    .addOnSuccessListener { println("add review success") }
+                                    .addOnSuccessListener {
+                                        reviews = listOf(Review(review["username"].toString(), review["comment"].toString(), review["rating"].toString().toInt() )) + reviews
+                                        println("add review success")
+                                    }
                             }
                             else {
                                 val addPlace: MutableMap<String, Any> = HashMap()
                                 addPlace["reviews"] = listOf(review)
                                 placeCollection.document(place.fsqId!!).set(addPlace)
-                                    .addOnSuccessListener { println("add review success") }
+                                    .addOnSuccessListener {
+                                        reviews = listOf(Review(review["username"].toString(), review["comment"].toString(), review["rating"].toString().toInt() )) + reviews
+                                        println("add review success")
+                                    }
                             }
                         }
 
@@ -453,7 +484,7 @@ fun BottomSheetContent(place: PlacesCoreData, context: Context, authViewModel: A
 }
 
 @Composable
-fun BottomSheetContentForContributedPlace(place: ContributedPlace, context: Context, authViewModel: AuthViewModel) {
+fun BottomSheetContentForContributedPlace(place: ContributedPlace, context: Context, authViewModel: AuthViewModel, onRoute: () -> Unit) {
     val db = FirebaseFirestore.getInstance()
     val contributedPlaceCollection = db.collection("Contributions")
 
@@ -511,23 +542,46 @@ fun BottomSheetContentForContributedPlace(place: ContributedPlace, context: Cont
         )
 
         Text(
-            text = "Đóng góp bởi: ${place.user}"
+            text = "Đóng góp bởi: ${ place.user }",
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        place.address.ifEmpty { "Chưa được cung cấp địa chỉ" }?.let {
+        place.address.ifEmpty { "Chưa được cung cấp địa chỉ" }.let {
             Text(
-                text = it,
+                text = "Địa chỉ: $it",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
 
-        Text(text = place.description, modifier = Modifier.padding(bottom = 10.dp))
+        Text(text = "Mô tả: " + place.description, modifier = Modifier.padding(bottom = 10.dp))
 
         Row(modifier = Modifier
             .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
+            Chip(
+                onClick = {
+                    onRoute()
+                },
+                label = {
+                    Text(text = "Đường đi")
+                },
+                modifier = Modifier
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
+                colors = ChipDefaults.chipColors(
+                    backgroundColor = Color(0x337F97FF),
+                    contentColor = Color.White
+                ),
+                icon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_route),
+                        contentDescription = ""
+                    )
+                }
+            )
+
             Chip(
                 onClick = {
                     if(authState.value is AuthState.Unauthenticated) {
@@ -542,8 +596,8 @@ fun BottomSheetContentForContributedPlace(place: ContributedPlace, context: Cont
                         savedPlaces["name"] = place.name
                         savedPlaces["address"] = place.address
                         savedPlaces["location"] = mapOf(
-                            "latiude" to place.location.latitude,
-                            "longtiude" to place.location.longitude
+                            "latitude" to place.location.latitude,
+                            "longitude" to place.location.longitude
                         )
 
                         userCollection.document(authViewModel.userInfo.value!!.uid)
@@ -798,43 +852,45 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
 
     var clickedPlace by remember { mutableStateOf(PlacesCoreData(fsqId = "")) }
     var clickedContributedPlace by remember { mutableStateOf(ContributedPlace()) }
+    var userLocation by remember { mutableStateOf(LatLng(21.0, 105.0))}
+    var clickedLocation by remember { mutableStateOf(LatLng(0.0, 0.0)) }
     val cameraPositionState = rememberCameraPositionState()
     val locationPermissionState = rememberPermissionState(permission = Manifest.permission.ACCESS_FINE_LOCATION)
 
+    var route by remember { mutableStateOf(emptyList<LatLng>()) }
+
     LaunchedEffect(Unit) {
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        locationPermissionState.launchPermissionRequest()
+        if (locationPermissionState.status.isGranted) {
             fusedLocationProviderClient.lastLocation.addOnSuccessListener { location ->
-                location?.let { it ->
-                    println("user location ${it.latitude} - ${it.longitude}")
-
-                    if(savedClickedPlaceLocation != null) {
+                if (location == null) {
+                    println("No location available.")
+                    cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                        LatLng(0.0, 0.0), 1f
+                    )
+                } else {
+                    userLocation = LatLng(location.latitude, location.longitude)
+                    println("User location: ${location.latitude} - ${location.longitude}")
+                    if (savedClickedPlaceLocation != null) {
+                        clickedLocation = savedClickedPlaceLocation!!
                         cameraPositionState.position = CameraPosition.fromLatLngZoom(
-                            savedClickedPlaceLocation!!, 15f)
-
-                        println(savedClickedPlaceLocation!!.latitude)
-                        savedClickedPlaceLocation = null
-                    }
-                    else {
+                            savedClickedPlaceLocation!!, 15f
+                        )
+                    } else {
+                        clickedLocation = LatLng(location.latitude, location.longitude)
                         cameraPositionState.position = CameraPosition.fromLatLngZoom(
-                            LatLng(it.latitude, it.longitude), 15f)
+                            LatLng(location.latitude, location.longitude), 15f
+                        )
                     }
 
-                    DataProvider.getPlaces(LatLng(it.latitude, it.longitude), 100000) { it ->
-                        placesApi = it
-                        val categoriesTmp: MutableSet<String> = mutableSetOf()
-                        it.forEach {
-                            categoriesTmp.add(it.categories[0].name)
-                        }
-                        categories = categoriesTmp
+                    DataProvider.getPlaces(LatLng(location.latitude, location.longitude), 100000) { places ->
+                        placesApi = places
+                        categories = places.map { it.categories[0].name }.toMutableSet()
                     }
                 }
             }
         } else {
-            locationPermissionState.launchPermissionRequest()
+            println("Permission not granted.")
         }
     }
 
@@ -851,7 +907,19 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
                 showBottomSheet = false
             },
         ) {
-            BottomSheetContent(clickedPlace, context, authViewModel)
+            BottomSheetContent(clickedPlace, context, authViewModel, onRoute = {
+                DataProvider.getRoute(userLocation, clickedLocation) { it ->
+                    route = it.features[0].geometry.coordinates.map { LatLng(it[1], it[0]) }
+
+                    val midLocation = route[route.size / 2];
+
+                    cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                        LatLng(midLocation.latitude, midLocation.longitude), zoom(it.features[0].properties.summary.distance)
+                    )
+                }
+
+                showBottomSheet = false
+            })
         }
     }
 
@@ -862,7 +930,18 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
                 showContributedPlaceBottomSheet = false
             },
         ) {
-            BottomSheetContentForContributedPlace(clickedContributedPlace, context, authViewModel)
+            BottomSheetContentForContributedPlace(clickedContributedPlace, context, authViewModel) {
+                DataProvider.getRoute(userLocation, clickedLocation) { it ->
+                    route = it.features[0].geometry.coordinates.map { LatLng(it[1], it[0]) }
+
+                    val midLocation = route[route.size / 2];
+
+                    cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                        LatLng(midLocation.latitude, midLocation.longitude), zoom(it.features[0].properties.summary.distance)
+                    )
+                }
+                showContributedPlaceBottomSheet = false
+            }
         }
     }
 
@@ -891,19 +970,31 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
             val urls = placesApi.map { "${it.categories[0].icon.prefix}120${it.categories[0].icon.suffix}" }
             val markerIcons = rememberMarkerIcons(urls, backgroundColor = 0xFF2061C3.toInt())
 
+            Polyline(points = route, color = Color(0xFFFFC700), width = 50f)
+
+            Marker(
+                state = MarkerState(position = clickedLocation),
+                icon = BitmapDescriptorFactory.fromResource(R.drawable.ic_choosed_location),
+                anchor = Offset(0.5F, 0.5F)
+            )
+
             for(place in searchedPlaces) {
                 val iconUrl = "${place.categories[0].icon.prefix}120${place.categories[0].icon.suffix}"
                 val customIcon = markerIcons[iconUrl]
 
-                println("Google map - ${place.geocodes!!.main.latitude}-${ place.geocodes.main.longitude} - ${iconUrl}")
                 Marker(
-                    state = MarkerState(position = LatLng(place.geocodes.main.latitude, place.geocodes.main.longitude)),
+                    state = MarkerState(position = LatLng(place.geocodes!!.main.latitude, place.geocodes.main.longitude)),
                     title = place.name,
+                    snippet = place.name,
                     icon = customIcon,
                     onClick = {
                         showBottomSheet = true
                         showContributedPlaceBottomSheet = false
                         clickedPlace = place
+                        clickedLocation = LatLng(place.geocodes.main.latitude, place.geocodes.main.longitude)
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                            LatLng(place.geocodes.main.latitude, place.geocodes.main.longitude), 15f
+                        )
                         true
                     }
                 )
@@ -918,6 +1009,10 @@ fun MapScreen(context: Context, authViewModel: AuthViewModel) {
                         showBottomSheet = false
                         showContributedPlaceBottomSheet = true
                         clickedContributedPlace = place
+                        clickedLocation = LatLng(place.location.latitude, place.location.longitude)
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                            LatLng(place.location.latitude, place.location.longitude), 15f
+                        )
                         true
                     }
                 )
@@ -1318,3 +1413,10 @@ fun fillBitmapBackgroundWithPadding(bitmap: Bitmap, color: Int, padding: Int): B
     return newBitmap
 }
 
+fun zoom(distance: Double) : Float {
+    val displayMetrics = DisplayMetrics()
+    MainActivity.getActivity().windowManager.defaultDisplay.getMetrics(displayMetrics)
+    val width = displayMetrics.widthPixels
+
+    return log2((40_075_000 * width).toDouble() / (distance * 32)).toFloat()
+}

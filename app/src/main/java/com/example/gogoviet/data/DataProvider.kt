@@ -5,13 +5,17 @@ import com.google.android.gms.maps.model.LatLng
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import com.example.gogoviet.BuildConfig
+import com.example.gogoviet.data.models.Coordinates
 import com.example.gogoviet.data.models.PlacesRichData
+import com.example.gogoviet.data.models.RouteData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 @Serializable
 data class PlacesResponseData(val results: List<PlacesCoreData>)
@@ -80,6 +84,42 @@ class DataProvider {
                 } catch (e: Exception) {
                     println("DataProvider: ${e.message}")
                     onResult(null)
+                }
+            }
+        }
+
+        fun getRoute(start: LatLng, dest: LatLng, onResult: (RouteData) -> Unit) {
+            val client = OkHttpClient()
+
+            val request = Request.Builder()
+                .url("https://api.openrouteservice.org/v2/directions/driving-car?api_key=${BuildConfig.ROUTE_API_KEY}&" +
+                        "start=${BigDecimal(start.longitude).setScale(6, RoundingMode.HALF_UP).toDouble()},${BigDecimal(start.latitude).setScale(6, RoundingMode.HALF_UP).toDouble()}&" +
+                        "end=${BigDecimal(dest.longitude).setScale(6, RoundingMode.HALF_UP).toDouble()},${BigDecimal(dest.latitude).setScale(6, RoundingMode.HALF_UP).toDouble()}")
+                .get()
+                .addHeader("accept", "application/geo+json;charset=UTF-8")
+                .addHeader("Authorization", BuildConfig.ROUTE_API_KEY)
+                .build()
+
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    println(request.url.toString())
+                    val response = withContext(Dispatchers.IO) {
+                        client.newCall(request).execute()
+                    }
+
+                    if (response.isSuccessful) {
+                        val responseData = response.body?.string()
+                        println("Responsedata: $responseData")
+                        val routeData = responseData?.let { jsonParser.decodeFromString<RouteData>(it) }
+//                        onResult(routeData!!.features[0].geometry.coordinates.map { LatLng(it[1], it[0]) })
+                        onResult(routeData!!)
+                    } else {
+                        println("DataProvider: ${response.message}")
+                        onResult(RouteData())
+                    }
+                } catch (e: Exception) {
+                    println("DataProvider: ${e.message}")
+                    onResult(RouteData())
                 }
             }
         }

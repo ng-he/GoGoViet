@@ -1,4 +1,4 @@
-package com.example.gogoviet.login
+package com.example.gogoviet
 
 import android.net.Uri
 import android.widget.Toast
@@ -30,10 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.gogoviet.AuthViewModel
-import com.example.gogoviet.R
-import com.example.gogoviet.UserInfo
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun userUpdate(
     modifier: Modifier = Modifier,
@@ -68,209 +66,219 @@ fun userUpdate(
         gender = userInfo.gender
     }
 
-
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(rememberScrollState()) // Enable vertical scroll
-            .padding(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header with User Icon and Title
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.usericon2),
-                    contentDescription = "User Icon",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .border(1.dp, Color(0xFF2061C3), CircleShape)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(text = "Đăng Ký") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color(0xFF223263)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Thông tin cá nhân",
-                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
-                    color = Color(0xFF223263)
-                )
-            }
-
-            // Profile Picture Section
-            AsyncImage(
-                model = imageUri ?: if (userInfo.photoUrl.isNotEmpty()) userInfo.photoUrl else R.drawable.default_avatar,
-                contentDescription = "Profile Picture",
+            )
+        },
+        content = { paddingValues ->
+            Column(
                 modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = { launcher.launch("image/*") },
-                enabled = !isUploading,
-                modifier = Modifier
-                    .height(40.dp)
+                    .fillMaxSize()                         // Fill the entire scaffold space
+                    .verticalScroll(rememberScrollState()) // Allow vertical scrolling
+                    .padding(paddingValues)                 // Respect the top bar (Scaffold) padding
+                    .background(Color.White)
+                    .padding(16.dp),                       // Additional screen padding
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(text = "Chọn ảnh đại diện")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Input Fields
-            InputField(
-                label = "Họ Và Tên",
-                hint = "Nhập họ và tên",
-                value = name,
-                onValueChange = { name = it },
-                isPassword = false
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = {},
-                label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = false, // Email is non-editable
-                textStyle = TextStyle(color = Color.Gray)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            InputField(
-                label = "Địa chỉ",
-                hint = "Nhập địa chỉ",
-                value = address,
-                onValueChange = { address = it },
-                isPassword = false
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Gender Selection
-            GenderDropdownMenu(
-                genders = genders,
-                selectedGender = gender,
-                onGenderSelected = { gender = it },
-                isEnabled = !isUploading
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Buttons
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedButton(
-                    onClick = { /* Handle cancel */ },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                        .height(50.dp),
-                    border = BorderStroke(1.dp, Color(0xFF2061C3)),
-                    shape = RoundedCornerShape(8.dp)
+                // Header with User Icon and Title
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.usericon2),
+                        contentDescription = "User Icon",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .border(1.dp, Color(0xFF2061C3), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Hủy bỏ",
-                        style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
-                        color = Color.Black
+                        text = "Thông tin cá nhân",
+                        style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold),
+                        color = Color(0xFF223263)
                     )
                 }
-                Button(
-                    onClick = {
-                        isUploading = true // Start loading state
-                        val updatedFields = mapOf(
-                            "name" to name,
-                            "address" to address,
-                            "gender" to gender
-                        )
-                        val imageUriToUpload = imageUri
 
-                        if (imageUriToUpload != null) {
-                            authViewModel.uploadProfilePicture(
-                                imageUriToUpload,
-                                onSuccess = { photoUrl ->
-                                    val updatedFieldsWithPhoto = updatedFields.toMutableMap()
-                                    updatedFieldsWithPhoto["photoUrl"] = photoUrl
-                                    authViewModel.updateUserInfo(
-                                        updatedFieldsWithPhoto,
-                                        onSuccess = {
-                                            isUploading = false // End loading state
-                                            Toast.makeText(
-                                                context,
-                                                "Profile updated successfully!",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            navController.navigate("account")
-                                        },
-                                        onFailure = { error ->
-                                            isUploading = false // End loading state
-                                            Toast.makeText(
-                                                context,
-                                                "Update failed: $error",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    )
-                                },
-                                onFailure = { error ->
-                                    isUploading = false // End loading state
-                                    Toast.makeText(
-                                        context,
-                                        "Failed to upload image: $error",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                // Profile Picture Section
+                AsyncImage(
+                    model = imageUri
+                        ?: if (userInfo.photoUrl.isNotEmpty()) userInfo.photoUrl else R.drawable.default_avatar,
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { launcher.launch("image/*") },
+                    enabled = !isUploading,
+                    modifier = Modifier
+                        .height(40.dp)
+                ) {
+                    Text(text = "Chọn ảnh đại diện")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Input Fields
+                com.example.gogoviet.login.InputField(
+                    label = "Họ Và Tên",
+                    hint = "Nhập họ và tên",
+                    value = name,
+                    onValueChange = { name = it },
+                    isPassword = false
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = {},
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false, // Email is non-editable
+                    textStyle = TextStyle(color = Color.Gray)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                com.example.gogoviet.login.InputField(
+                    label = "Địa chỉ",
+                    hint = "Nhập địa chỉ",
+                    value = address,
+                    onValueChange = { address = it },
+                    isPassword = false
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Gender Selection
+                GenderDropdownMenu(
+                    genders = genders,
+                    selectedGender = gender,
+                    onGenderSelected = { gender = it },
+                    isEnabled = !isUploading
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Buttons
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = { /* Handle cancel */
+                            navController.navigate("account")
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp)
+                            .height(50.dp),
+                        border = BorderStroke(1.dp, Color(0xFF2061C3)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Hủy bỏ",
+                            style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                            color = Color.Black
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            isUploading = true // Start loading state
+                            val updatedFields = mapOf(
+                                "name" to name,
+                                "address" to address,
+                                "gender" to gender
                             )
+                            val imageUriToUpload = imageUri
+
+                            if (imageUriToUpload != null) {
+                                authViewModel.uploadProfilePicture(
+                                    imageUriToUpload,
+                                    onSuccess = { photoUrl ->
+                                        val updatedFieldsWithPhoto = updatedFields.toMutableMap()
+                                        updatedFieldsWithPhoto["photoUrl"] = photoUrl
+                                        authViewModel.updateUserInfo(
+                                            updatedFieldsWithPhoto,
+                                            onSuccess = {
+                                                isUploading = false // End loading state
+                                                Toast.makeText(
+                                                    context,
+                                                    "Profile updated successfully!",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                navController.navigate("account")
+                                            },
+                                            onFailure = { error ->
+                                                isUploading = false // End loading state
+                                                Toast.makeText(
+                                                    context,
+                                                    "Update failed: $error",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        )
+                                    },
+                                    onFailure = { error ->
+                                        isUploading = false // End loading state
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to upload image: $error",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                )
+                            } else {
+                                authViewModel.updateUserInfo(
+                                    updatedFields,
+                                    onSuccess = {
+                                        isUploading = false // End loading state
+                                        Toast.makeText(
+                                            context,
+                                            "Profile updated successfully!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        navController.navigate("account")
+                                    },
+                                    onFailure = { error ->
+                                        isUploading = false // End loading state
+                                        Toast.makeText(
+                                            context,
+                                            "Update failed: $error",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                )
+                            }
+                        },
+                        enabled = !isUploading, // Disable the button when uploading
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 8.dp)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2061C3))
+                    ) {
+                        if (isUploading) {
+                            Text("Đang lưu...")
                         } else {
-                            authViewModel.updateUserInfo(
-                                updatedFields,
-                                onSuccess = {
-                                    isUploading = false // End loading state
-                                    Toast.makeText(
-                                        context,
-                                        "Profile updated successfully!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    navController.navigate("account")
-                                },
-                                onFailure = { error ->
-                                    isUploading = false // End loading state
-                                    Toast.makeText(
-                                        context,
-                                        "Update failed: $error",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                            Text(
+                                text = "Lưu và thay đổi",
+                                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                                color = Color.White
                             )
                         }
-                    },
-                    enabled = !isUploading, // Disable the button when uploading
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 8.dp)
-                        .height(50.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2061C3))
-                ) {
-                    if (isUploading) {
-                        Text("Đang lưu...")
-                    } else {
-                        Text(
-                            text = "Lưu và thay đổi",
-                            style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
-                            color = Color.White
-                        )
                     }
                 }
             }
-        }
-    }
+        })
 
 }
 @Composable

@@ -1,6 +1,5 @@
 package com.example.gogoviet
 
-import kotlinx.coroutines.coroutineScope
 import android.content.Context
 import android.content.res.Resources
 import android.os.Bundle
@@ -12,7 +11,6 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,32 +38,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.media3.common.util.UnstableApi
-import com.example.gogoviet.ui.theme.*
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 //import com.example.gogoviet.ui.foryou.ForYouVideoScreen
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.model.CameraPosition
-import com.example.gogoviet.data.DataProvider
-import com.example.gogoviet.data.models.PlacesCoreData
 import com.example.gogoviet.login.login
 import com.example.gogoviet.login.signup
-import com.example.gogoviet.login.userUpdate
-import com.example.s2travel.HomeScreen
 import com.example.gogoviet.ui.theme.GoGoVietTheme
 import com.example.gogoviet.ui.theme.Poppins
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapType
-import com.google.maps.android.compose.MapUiSettings
 import dagger.hilt.android.AndroidEntryPoint
+import forgotPassword
 
 
 @AndroidEntryPoint
@@ -73,6 +57,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         lateinit var instance: MainActivity
         fun getAppResources(): Resources = instance.resources
+        fun getContext(): Context = instance
+        fun getActivity(): MainActivity = instance
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,26 +102,23 @@ fun NavigationHost(
     authViewModel: AuthViewModel
 ) {
     NavHost(navController, startDestination = startDestination, modifier = modifier) {
-        composable("home") { HomeScreen(modifier) }
+        composable("home") { HomeScreen(navController) }
         composable("explore") { ExploreScreen(context, authViewModel) }
         composable("video") { VideoScreen() }
-        composable("saved") { SavedScreen(authViewModel, context, navController) }
+        composable("saved") {
+            if(authViewModel.authState.value is AuthState.Authenticated) {
+                SavedScreen(authViewModel, context, navController)
+            }
+            else {
+                navController.navigate("login")
+            }
+        }
         composable("account") { AccountScreen(modifier, navController,authViewModel) }
         composable("login") { login(modifier, navController,authViewModel) }
         composable("signup") { signup(modifier, navController,authViewModel) }
         composable("updateProfile") { userUpdate(modifier, navController,authViewModel) }
-    }
-}
-
-@Composable
-fun ScreenContent(title: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.LightGray),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = title, style = TextStyle(fontSize = 24.sp))
+        composable("forgotPassword") { forgotPassword(modifier,navController,authViewModel) }
+        composable("detail") { Detail(modifier, navController) }
     }
 }
 

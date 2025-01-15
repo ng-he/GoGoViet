@@ -4,13 +4,16 @@
 
     import androidx.compose.animation.core.LinearEasing
     import androidx.compose.foundation.ExperimentalFoundationApi
+    import androidx.compose.foundation.background
     import androidx.compose.foundation.layout.fillMaxSize
     import androidx.compose.foundation.pager.VerticalPager
     import androidx.compose.foundation.pager.rememberPagerState
     import androidx.compose.material3.Text
     import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.LaunchedEffect
     import androidx.compose.runtime.key
     import androidx.compose.ui.Modifier
+    import androidx.compose.ui.graphics.Color
     import androidx.hilt.navigation.compose.hiltViewModel
     import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -36,43 +39,34 @@
     //}
 
 
-    @OptIn(ExperimentalFoundationApi::class, UnstableApi::class)
     @Composable
     @UnstableApi
     fun ListForYouVideoScreen(
         modifier: Modifier = Modifier,
         onShowComment: (Int) -> Unit,
         viewModel: videoViewModel = hiltViewModel()
-
-    //    pageCount = videoId.size
     ) {
-
-    //    val pagerState = rememberPagerState(initialPage = 0){ pageCount = videoIds.size}
         val videoIds = viewModel.videos
-        val pagerState = rememberPagerState(initialPage = 0){videoIds.size}
+        val pagerState = rememberPagerState(initialPage = 0) { videoIds.size }
 
         VerticalPager(
             state = pagerState,
-    //        pageCount = videoIds.size, // Số lượng video
-            modifier = modifier.fillMaxSize()
-        ) { videoId ->
-//            val videoId = videoIds[page] // Lấy `videoId` từ danh sách theo `page`
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) { page ->
+            val videoId = videoIds[page]
             val viewModel: videoViewModel = hiltViewModel(key = videoId.toString())
+            val isVisible = pagerState.currentPage == page
 
-//            val isVisible = pagerState.currentPage == page
-//
-//
-//
-//            if (isVisible) {
-//                viewModel.playVisibleVideo(videoId)
-//            } else {
-//                viewModel.pauseVideo()
-//            }
-//
-//            Text (
-//                text = "${videoId}.  ${pagerState.currentPage}   . $page"
-//
-//            )
+            // Manage video playback visibility
+            LaunchedEffect(isVisible) {
+                if (isVisible) {
+                    viewModel.playVisibleVideo(videoId)
+                } else {
+                    viewModel.pauseVideo()
+                }
+            }
 
             VideoDetailScreen(
                 videoId = videoId,
@@ -80,6 +74,5 @@
                 onShowComment = onShowComment
             )
         }
-
     }
 

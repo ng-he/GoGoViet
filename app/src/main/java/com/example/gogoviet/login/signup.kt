@@ -1,9 +1,8 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.example.gogoviet.login
 
 import android.preference.PreferenceActivity
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +57,7 @@ import com.example.gogoviet.AuthViewModel
 import com.example.gogoviet.R
 import okhttp3.internal.http2.Header
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun signup(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel) {
     // Quản lý trạng thái nhập liệu
@@ -95,36 +95,41 @@ fun signup(modifier: Modifier = Modifier, navController: NavController, authView
             )
         },
         content = { paddingValues ->
-            Box(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFFFFFFF))
-                    .padding(paddingValues)
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()                         // Fill the entire scaffold space
+                    .verticalScroll(rememberScrollState()) // Allow vertical scrolling
+                    .padding(paddingValues)                 // Respect the top bar (Scaffold) padding
+                    .background(Color.White)
+                    .padding(16.dp),                       // Additional screen padding
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                Image(
+                    painter = painterResource(id = R.drawable.gogovit11),
+                    contentDescription = "Highlighted Image",
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+                        .fillMaxWidth()
+                        .height(200.dp)
                         .padding(bottom = 16.dp)
-                ) {
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    NgK(
-                        username = username,
-                        onUsernameChange = { username = it },
-                        email = email,
-                        onEmailChange = { email = it },
-                        password = password,
-                        onPasswordChange = { password = it },
-                        onSignupClick = {
-                            authViewModel.signup(email, password, username)
-                        },
-                        isLoading = authState == AuthState.Loading,
-                        navController = navController
-                    )
-                }
-
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                NgK(
+                    username = username,
+                    onUsernameChange = { username = it },
+                    email = email,
+                    onEmailChange = { email = it },
+                    password = password,
+                    onPasswordChange = { password = it },
+                    onSignupClick = {
+                        authViewModel.signup(email, password, username)
+                    },
+                    isLoading = authState == AuthState.Loading,
+                    navController = navController
+                )
             }
+
+
         })
 }
 @Composable
@@ -149,7 +154,7 @@ fun NgK(
         // Sử dụng InputField cho Họ và Tên
         InputField(
             label = "Họ và tên",
-            hint = "Tên của bạn, ví dụ: NguyenA",
+            hint = "Tên của bạn",
             value = username,
             onValueChange = onUsernameChange
         )
@@ -158,7 +163,7 @@ fun NgK(
         // Sử dụng InputField cho Email
         InputField(
             label = "Email",
-            hint = "Email của bạn, ví dụ: NguyenA@gmail.com",
+            hint = "Email của bạn",
             value = email,
             onValueChange = onEmailChange
         )
@@ -226,8 +231,3 @@ fun NgK(
 
     }
 }
-
-
-
-
-

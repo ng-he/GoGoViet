@@ -36,6 +36,7 @@ android {
         fun getLocalProperty(key: String): String? = localProperties.getProperty(key)
 
         buildConfigField("String", "PLACES_API_KEY", "\"${getLocalProperty("PLACES_API_KEY")}\"")
+        buildConfigField("String", "ROUTE_API_KEY", "\"${getLocalProperty("ROUTE_API_KEY")}\"")
     }
 
     buildTypes {

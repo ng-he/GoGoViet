@@ -42,7 +42,6 @@ class videoViewModel @Inject constructor(
         player.prepare()
     }
 
-
     fun processAction(action: VideoDetailAction) {
         when (action) {
             is VideoDetailAction.LoadData -> {
