@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "75926618893",
+    "project_id": "gogo-viet-26dda",
+    "storage_bucket": "gogo-viet-26dda.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:75926618893:android:31ffbc0d2eecbc382fe644",
+        "android_client_info": {
+          "package_name": "com.example.gogoviet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNAgm_2YLqtSD-Y3XCkjq79klw8ErE82k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,7 @@
 package com.example.gogoviet.ui.foryou
 
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,9 +27,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ForYouVideoScreen(
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 
-    ) {
+
+) {
 
     val bottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
 
@@ -72,6 +74,7 @@ fun ForYouVideoScreen(
                 hideBottomSheet()
             }
         }, modifier = modifier.fillMaxSize(),
+
         scrimColor = Color.Transparent,
         sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         sheetState = bottomSheetState,

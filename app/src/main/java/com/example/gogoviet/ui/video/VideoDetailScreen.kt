@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -31,6 +32,8 @@ fun VideoDetailScreen(
 ) {
 
     val uiState = vieModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
 
     if (uiState.value == VideoDetailUiState.Default) {
         // loading
@@ -40,6 +43,7 @@ fun VideoDetailScreen(
     DisposableEffect(key1 = videoId.toString()) {
         // Được gọi khi Composable được "mounted" (đưa vào giao diện)
         onDispose {
+
             // Gọi DisposeAction khi Composable bị "unmounted" (rời khỏi giao diện)
             vieModel.processAction(VideoDetailAction.DisposeAction)
         }

@@ -7,6 +7,7 @@ package com.example.gogoviet.ui.video
 
 import android.content.Context
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,9 +28,10 @@ import javax.inject.Inject
 @HiltViewModel
 class videoViewModel @Inject constructor(
     var player: ExoPlayer,
-    private val videoRepository: VideoRepository
+    private val videoRepository: VideoRepository,
+//    savedStateHandle: SavedStateHandle
 ): ViewModel() {
-
+//    val videoId: Int = savedStateHandle["videoId"] ?: 0
     private var _uiState = MutableStateFlow<VideoDetailUiState>(VideoDetailUiState.Default)
     val uiState: StateFlow<VideoDetailUiState>
         get() = _uiState
@@ -148,7 +150,7 @@ class videoViewModel @Inject constructor(
 
 
     private fun onDispose() {
-        player.release()
+        player.pause()
 //        currentPlayingVideoId = null // Reset trạng thái video đang phát
     }
 
@@ -165,6 +167,7 @@ fun pauseVideo() {
         player.pause()
     }
 }
+
 }
 
 
